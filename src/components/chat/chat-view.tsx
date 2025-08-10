@@ -14,8 +14,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Sidebar, SidebarHeader, SidebarContent, SidebarTrigger, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
+import { Sidebar, SidebarHeader, SidebarContent, SidebarTrigger, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuAction, SidebarFooter } from "@/components/ui/sidebar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Mascot, type MascotMood } from "@/components/chat/mascot";
+import React from "react";
+import { Slot } from "@radix-ui/react-slot";
 
 export type Message = {
   id: string;
@@ -43,6 +46,7 @@ export function ChatView() {
   const [isListening, setIsListening] = useState(false);
   const [sourceLang, setSourceLang] = useState('English');
   const [targetLang, setTargetLang] = useState('Telugu');
+  const [mascotMood, setMascotMood] = useState<MascotMood>('neutral');
 
   const { toast } = useToast();
 
@@ -173,6 +177,7 @@ export function ChatView() {
     };
     setChatHistory(prev => [newChat, ...prev]);
     setCurrentChatId(newChatId);
+    setMascotMood('neutral');
   }
 
   const deleteChat = (chatId: string) => {
@@ -188,7 +193,6 @@ export function ChatView() {
         if (chat.id === currentChatId) {
           const updatedMessages = typeof newMessages === 'function' ? newMessages(chat.messages) : newMessages;
           
-          // Update chat title with first user message
           let newTitle = chat.title;
           if (chat.title === 'New Chat' && updatedMessages.length > 0 && updatedMessages[0].role === 'user') {
             newTitle = updatedMessages[0].content?.substring(0, 30) || 'Chat';
@@ -213,6 +217,7 @@ export function ChatView() {
     setInput("");
     setSuggestions([]);
     setIsLoading(true);
+    setMascotMood('neutral');
 
     try {
       const aiResponse = await getAiResponse(input, grade, activeTab, {sourceLang, targetLang});
@@ -225,6 +230,15 @@ export function ChatView() {
         emotion: aiResponse.emotion,
       };
 
+      if (aiResponse.emotion) {
+        const emotion = aiResponse.emotion.toLowerCase();
+        if (emotion.includes('confus') || emotion.includes('frustrat')) {
+          setMascotMood('encouraging');
+        } else if (emotion.includes('curious') || emotion.includes('happy') || emotion.includes('excit')) {
+          setMascotMood('happy');
+        }
+      }
+
       updateMessages((prev) => [...prev.filter(m => m.role !== 'loading'), newAiMessage]);
     } catch (error) {
       console.error(error);
@@ -235,6 +249,7 @@ export function ChatView() {
         description: errorMessage,
       });
       updateMessages((prev) => prev.filter(m => m.role !== 'loading'));
+      setMascotMood('encouraging');
     } finally {
       setIsLoading(false);
     }
@@ -296,9 +311,7 @@ export function ChatView() {
         <header className="flex items-center justify-between p-4 border-b bg-background shrink-0">
           <div className="flex items-center gap-3">
             <SidebarTrigger className="md:hidden"/>
-            <div className="p-2 rounded-full bg-primary/10">
-              <BotIcon className="h-6 w-6 text-primary" />
-            </div>
+            <Mascot mood={mascotMood} className="h-10 w-10 text-primary" />
             <h1 className="text-xl font-bold font-headline">Vidyarthi Mitra</h1>
           </div>
           <div className="flex items-center gap-2">
