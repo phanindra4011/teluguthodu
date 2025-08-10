@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { CornerDownLeft, Mic, Search, BotIcon, Book, Image as ImageIcon, MessageCircle, ArrowUp, History, PlusCircle, Trash2, Languages } from "lucide-react";
+import { CornerDownLeft, Mic, Search, BotIcon, Book, Image as ImageIcon, MessageCircle, ArrowUp, History, PlusCircle, Trash2, Languages, Upload } from "lucide-react";
 import { getAiResponse, getAutocompleteSuggestions } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,6 +52,7 @@ export function ChatView() {
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const debouncedInput = useDebounce(input, 300);
 
@@ -260,6 +261,18 @@ export function ChatView() {
     setSuggestions([]);
   };
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        setInput(text);
+      };
+      reader.readAsText(file);
+    }
+  };
+
   const getPlaceholderText = () => {
     switch(activeTab) {
       case 'chat': return 'మీ AI స్నేహితుడితో తెలుగులో మాట్లాడండి...';
@@ -332,31 +345,49 @@ export function ChatView() {
             </Tabs>
           </div>
           
-          {activeTab === 'translate' && (
-             <div className="flex items-center justify-center gap-4 p-4">
-               <Select value={sourceLang} onValueChange={setSourceLang}>
-                 <SelectTrigger className="w-[120px]">
-                   <SelectValue placeholder="Source" />
-                 </SelectTrigger>
-                 <SelectContent>
-                   <SelectItem value="English">English</SelectItem>
-                   <SelectItem value="Telugu">Telugu</SelectItem>
-                 </SelectContent>
-               </Select>
-               <Button variant="ghost" size="icon" onClick={() => { setSourceLang(targetLang); setTargetLang(sourceLang); }}>
-                  <History className="h-5 w-5" />
-               </Button>
-               <Select value={targetLang} onValueChange={setTargetLang}>
-                 <SelectTrigger className="w-[120px]">
-                   <SelectValue placeholder="Target" />
-                 </SelectTrigger>
-                 <SelectContent>
+          <div className="flex items-center justify-center gap-4 p-4">
+            {activeTab === 'translate' && (
+              <>
+                <Select value={sourceLang} onValueChange={setSourceLang}>
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue placeholder="Source" />
+                  </SelectTrigger>
+                  <SelectContent>
                     <SelectItem value="English">English</SelectItem>
-                   <SelectItem value="Telugu">Telugu</SelectItem>
-                 </SelectContent>
-               </Select>
-             </div>
-          )}
+                    <SelectItem value="Telugu">Telugu</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button variant="ghost" size="icon" onClick={() => { setSourceLang(targetLang); setTargetLang(sourceLang); }}>
+                    <History className="h-5 w-5" />
+                </Button>
+                <Select value={targetLang} onValueChange={setTargetLang}>
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue placeholder="Target" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="English">English</SelectItem>
+                    <SelectItem value="Telugu">Telugu</SelectItem>
+                  </SelectContent>
+                </Select>
+              </>
+            )}
+             {activeTab === 'summarize' && (
+                <>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept=".txt"
+                  />
+                  <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload Document
+                  </Button>
+                </>
+             )}
+          </div>
+
 
           <ScrollArea className="flex-1" ref={scrollAreaRef}>
             <div className="space-y-6 p-4">
