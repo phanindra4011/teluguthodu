@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -45,6 +46,13 @@ export function ChatView() {
   const recognitionRef = useRef<any>(null);
 
   const debouncedInput = useDebounce(input, 300);
+
+  // Fix for hydration error
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
 
   // Load chat history from localStorage
   useEffect(() => {
@@ -258,7 +266,7 @@ export function ChatView() {
       <nav className="w-64 flex flex-col p-4 bg-card border-r">
         <div className="flex items-center gap-2 mb-8">
             <BotIcon className="w-8 h-8 text-primary"/>
-            <h1 className="text-xl font-bold">తెలుగు తోడు</h1>
+            <h1 className="text-xl font-bold">Telugu Thodu</h1>
         </div>
         <div className="flex-1 flex flex-col gap-2">
             {navItems.map(item => (
@@ -282,9 +290,11 @@ export function ChatView() {
             </Button>
             <div className="flex justify-around">
                 <Button variant="ghost" size="icon" onClick={() => {}}><Settings className="w-5 h-5"/></Button>
-                <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-                    {theme === 'dark' ? <Sun className="w-5 h-5"/> : <Moon className="w-5 h-5"/>}
-                </Button>
+                {mounted && (
+                    <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+                        {theme === 'dark' ? <Sun className="w-5 h-5"/> : <Moon className="w-5 h-5"/>}
+                    </Button>
+                )}
             </div>
         </div>
       </nav>
