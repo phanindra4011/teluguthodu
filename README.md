@@ -1,8 +1,8 @@
-# Firebase Studio
+# Telugu Thodu
 
-This is a NextJS starter in Firebase Studio.
+This is a Next.js starter project for Telugu Thodu, an AI-powered learning assistant for students.
 
-To get started, take a look at src/app/page.tsx.
+To get started, take a look at `src/app/page.tsx`.
 
 ## Setup
 
