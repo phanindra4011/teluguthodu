@@ -38,6 +38,8 @@ const prompt = ai.definePrompt({
 
   Summarize the following content from a Telugu textbook in a way that is easy for students to understand. The summary should be no more than 300 words and use simple Telugu.
 
+  IMPORTANT: You must respond ONLY in Telugu.
+
   Content to summarize: {{{textbookContent}}}
 
   Make sure the summary contains all the key points from the original content.

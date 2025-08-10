@@ -1,4 +1,4 @@
-"use server";
+'use server';
 
 import { generateImageFromTeluguText } from "@/ai/flows/generate-image-from-telugu-text";
 import { inferStudentEmotion } from "@/ai/flows/infer-student-emotion";
@@ -63,7 +63,7 @@ export async function getAiResponse(
           teluguText: prompt,
         });
         imageUrl = imageResponse.imageDataUri;
-        responseText = `Here is the image you requested for: "${prompt}"`;
+        responseText = `మీరు అభ్యర్థించిన చిత్రం ఇక్కడ ఉంది: "${prompt}"`;
         break;
       case "translate":
         if (!options.sourceLang || !options.targetLang) {

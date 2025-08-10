@@ -150,12 +150,12 @@ export function ChatView() {
   const speak = useCallback((text: string) => {
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'te-IN';
       const voices = window.speechSynthesis.getVoices();
       const teluguVoice = voices.find(voice => voice.lang === 'te-IN');
       if (teluguVoice) {
         utterance.voice = teluguVoice;
       }
-      utterance.lang = 'te-IN';
       window.speechSynthesis.cancel();
       window.speechSynthesis.speak(utterance);
     } else {
@@ -262,12 +262,12 @@ export function ChatView() {
 
   const getPlaceholderText = () => {
     switch(activeTab) {
-      case 'chat': return 'Talk to your AI friend in Telugu...';
-      case 'ask': return 'Ask a question in Telugu...';
-      case 'summarize': return 'Paste Telugu text to summarize...';
-      case 'image': return 'Describe an image to create in Telugu...';
-      case 'translate': return `Translate from ${sourceLang} to ${targetLang}...`;
-      default: return 'Type your message...';
+      case 'chat': return 'మీ AI స్నేహితుడితో తెలుగులో మాట్లాడండి...';
+      case 'ask': return 'తెలుగులో ఒక ప్రశ్న అడగండి...';
+      case 'summarize': return 'సంగ్రహించడానికి తెలుగు వచనాన్ని అతికించండి...';
+      case 'image': return 'తెలుగులో సృష్టించాల్సిన చిత్రాన్ని వివరించండి...';
+      case 'translate': return `${sourceLang} నుండి ${targetLang}కు అనువదించండి...`;
+      default: return 'మీ సందేశాన్ని టైప్ చేయండి...';
     }
   }
 
@@ -276,7 +276,7 @@ export function ChatView() {
       <Sidebar side="left">
         <SidebarHeader>
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Chat History</h2>
+            <h2 className="text-lg font-semibold">చాట్ చరిత్ర</h2>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={createNewChat}>
               <PlusCircle className="h-5 w-5"/>
             </Button>
@@ -299,7 +299,7 @@ export function ChatView() {
               </SidebarMenuItem>
             ))
           ) : (
-            <div className="p-4 text-center text-sm text-muted-foreground">No chat history yet.</div>
+            <div className="p-4 text-center text-sm text-muted-foreground">ఇంకా చాట్ చరిత్ర లేదు.</div>
           )}
           </SidebarMenu>
         </SidebarContent>
@@ -312,7 +312,7 @@ export function ChatView() {
           <div className="flex items-center gap-3">
             <SidebarTrigger className="md:hidden"/>
             <Mascot mood={mascotMood} className="h-10 w-10 text-primary" />
-            <h1 className="text-xl font-bold font-headline">Telugu Thodu</h1>
+            <h1 className="text-xl font-bold font-headline">తెలుగు తోడు</h1>
           </div>
           <div className="flex items-center gap-2">
             <GradeSelector value={grade} onValueChange={setGrade} />
@@ -323,11 +323,11 @@ export function ChatView() {
           <div className="p-4 pb-0">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="">
               <TabsList className="grid w-full grid-cols-5 bg-muted/60">
-                <TabsTrigger value="chat"><MessageCircle className="mr-2 h-4 w-4"/>Chat</TabsTrigger>
-                <TabsTrigger value="ask"><Search className="mr-2 h-4 w-4"/>Ask</TabsTrigger>
-                <TabsTrigger value="summarize"><Book className="mr-2 h-4 w-4"/>Summarize</TabsTrigger>
-                <TabsTrigger value="image"><ImageIcon className="mr-2 h-4 w-4"/>Image</TabsTrigger>
-                <TabsTrigger value="translate"><Languages className="mr-2 h-4 w-4"/>Translate</TabsTrigger>
+                <TabsTrigger value="chat"><MessageCircle className="mr-2 h-4 w-4"/>చాట్</TabsTrigger>
+                <TabsTrigger value="ask"><Search className="mr-2 h-4 w-4"/>అడగండి</TabsTrigger>
+                <TabsTrigger value="summarize"><Book className="mr-2 h-4 w-4"/>సంగ్రహించండి</TabsTrigger>
+                <TabsTrigger value="image"><ImageIcon className="mr-2 h-4 w-4"/>చిత్రం</TabsTrigger>
+                <TabsTrigger value="translate"><Languages className="mr-2 h-4 w-4"/>అనువదించండి</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -363,15 +363,15 @@ export function ChatView() {
               {messages.length === 0 && !currentChatId && (
                 <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground pt-20">
                   <BotIcon className="h-16 w-16 mb-4 text-primary/50" />
-                  <h2 className="text-2xl font-semibold text-foreground">Welcome!</h2>
-                  <p>Start a new chat or select one from your history.</p>
+                  <h2 className="text-2xl font-semibold text-foreground">స్వాగతం!</h2>
+                  <p>కొత్త చాట్‌ను ప్రారంభించండి లేదా మీ చరిత్ర నుండి ఒకదాన్ని ఎంచుకోండి.</p>
                 </div>
               )}
                {messages.length === 0 && currentChatId && (
                 <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground pt-20">
                   <BotIcon className="h-16 w-16 mb-4 text-primary/50" />
-                  <h2 className="text-2xl font-semibold text-foreground">How can I help?</h2>
-                  <p>Select a feature above and send a message to begin.</p>
+                  <h2 className="text-2xl font-semibold text-foreground">నేను ఎలా సహాయపడగలను?</h2>
+                  <p>ప్రారంభించడానికి పైన ఒక ఫీచర్‌ని ఎంచుకుని, సందేశం పంపండి.</p>
                 </div>
               )}
               {messages.map((msg) => (
