@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview Implements the autocomplete suggestions feature for the Vidyarthi Mitra app.
+ * @fileOverview Implements the autocomplete suggestions feature for the Telugu Thodu app.
  *
  * - provideAutocompleteSuggestions - Provides autocomplete suggestions based on the input text.
  * - AutocompleteSuggestionsInput - The input type for the provideAutocompleteSuggestions function.

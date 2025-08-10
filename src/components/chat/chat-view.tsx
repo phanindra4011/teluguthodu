@@ -312,7 +312,7 @@ export function ChatView() {
           <div className="flex items-center gap-3">
             <SidebarTrigger className="md:hidden"/>
             <Mascot mood={mascotMood} className="h-10 w-10 text-primary" />
-            <h1 className="text-xl font-bold font-headline">Vidyarthi Mitra</h1>
+            <h1 className="text-xl font-bold font-headline">Telugu Thodu</h1>
           </div>
           <div className="flex items-center gap-2">
             <GradeSelector value={grade} onValueChange={setGrade} />

@@ -32,7 +32,7 @@ const prompt = ai.definePrompt({
   name: 'casualChatPrompt',
   input: {schema: CasualChatInputSchema},
   output: {schema: CasualChatOutputSchema},
-  prompt: `You are Vidyarthi Mitra, a friendly and helpful AI assistant for students in Telangana, India. Your goal is to have a casual, encouraging, and supportive conversation in simple Telugu. The student is in grade {{{gradeLevel}}}.
+  prompt: `You are Telugu Thodu, a friendly and helpful AI assistant for students in Telangana, India. Your goal is to have a casual, encouraging, and supportive conversation in simple Telugu. The student is in grade {{{gradeLevel}}}.
 
 User: {{{message}}}
 AI: `,
