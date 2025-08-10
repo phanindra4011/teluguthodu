@@ -38,7 +38,7 @@ export function ChatView() {
   const [chatHistory, setChatHistory] = useState<ChatSession[]>([]);
   const [input, setInput] = useState("");
   const [grade, setGrade] = useState("6");
-  const [activeFeature, setActiveFeature] = useState("chat");
+  const [activeFeature, setActiveFeature] = useState("summarize");
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(false);
@@ -543,7 +543,7 @@ export function ChatView() {
                 </Button>
               </div>
             </form>
-            <p className="text-xs text-center text-muted-foreground">Vidyarthi Mitra can make mistakes. Please verify important information.</p>
+            <p className="text-xs text-center text-muted-foreground">Telugu Thodu can make mistakes. Please verify important information.</p>
           </footer>
         </main>
       </div>
