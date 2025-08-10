@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { CornerDownLeft, Mic, Search, BotIcon, Book, Image as ImageIcon, MessageCircle, ArrowUp } from "lucide-react";
+import { CornerDownLeft, Mic, Search, BotIcon, Book, Image as ImageIcon, MessageCircle, ArrowUp, History, PlusCircle, Trash2, Languages } from "lucide-react";
 import { getAiResponse, getAutocompleteSuggestions } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +14,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Sidebar, SidebarHeader, SidebarContent, SidebarTrigger, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export type Message = {
   id: string;
@@ -23,21 +25,52 @@ export type Message = {
   emotion?: string;
 };
 
+type ChatSession = {
+  id: string;
+  title: string;
+  messages: Message[];
+  createdAt: number;
+};
+
 export function ChatView() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+  const [chatHistory, setChatHistory] = useState<ChatSession[]>([]);
   const [input, setInput] = useState("");
   const [grade, setGrade] = useState("6");
   const [activeTab, setActiveTab] = useState("chat");
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(false);
-  
+  const [sourceLang, setSourceLang] = useState('English');
+  const [targetLang, setTargetLang] = useState('Telugu');
+
   const { toast } = useToast();
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
   const debouncedInput = useDebounce(input, 300);
+
+  // Load chat history from localStorage
+  useEffect(() => {
+    const savedHistory = localStorage.getItem("chatHistory");
+    if (savedHistory) {
+      const parsedHistory = JSON.parse(savedHistory) as ChatSession[];
+      setChatHistory(parsedHistory);
+      if (parsedHistory.length > 0) {
+        setCurrentChatId(parsedHistory[0].id);
+      }
+    }
+  }, []);
+
+  // Save chat history to localStorage
+  useEffect(() => {
+    if (chatHistory.length > 0) {
+      localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
+    }
+  }, [chatHistory]);
+
+  const messages = chatHistory.find(chat => chat.id === currentChatId)?.messages ?? [];
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -129,19 +162,60 @@ export function ChatView() {
       });
     }
   }, [toast]);
+
+  const createNewChat = () => {
+    const newChatId = Date.now().toString();
+    const newChat: ChatSession = {
+      id: newChatId,
+      title: 'New Chat',
+      messages: [],
+      createdAt: Date.now()
+    };
+    setChatHistory(prev => [newChat, ...prev]);
+    setCurrentChatId(newChatId);
+  }
+
+  const deleteChat = (chatId: string) => {
+    setChatHistory(prev => prev.filter(chat => chat.id !== chatId));
+    if (currentChatId === chatId) {
+      setCurrentChatId(chatHistory.length > 1 ? chatHistory[1].id : null);
+    }
+  }
+
+  const updateMessages = (newMessages: Message[] | ((prevMessages: Message[]) => Message[])) => {
+    setChatHistory(prev =>
+      prev.map(chat => {
+        if (chat.id === currentChatId) {
+          const updatedMessages = typeof newMessages === 'function' ? newMessages(chat.messages) : newMessages;
+          
+          // Update chat title with first user message
+          let newTitle = chat.title;
+          if (chat.title === 'New Chat' && updatedMessages.length > 0 && updatedMessages[0].role === 'user') {
+            newTitle = updatedMessages[0].content?.substring(0, 30) || 'Chat';
+          }
+
+          return { ...chat, messages: updatedMessages, title: newTitle };
+        }
+        return chat;
+      })
+    );
+  };
   
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
+    if (!currentChatId) {
+        createNewChat();
+    }
     const userMessage: Message = { id: Date.now().toString(), role: 'user', content: input };
-    setMessages((prev) => [...prev, userMessage, { id: 'loading', role: 'loading' }]);
+    updateMessages((prev) => [...prev, userMessage, { id: 'loading', role: 'loading' }]);
     setInput("");
     setSuggestions([]);
     setIsLoading(true);
 
     try {
-      const aiResponse = await getAiResponse(input, grade, activeTab);
+      const aiResponse = await getAiResponse(input, grade, activeTab, {sourceLang, targetLang});
       
       const newAiMessage: Message = {
         id: Date.now().toString() + "-ai",
@@ -151,7 +225,7 @@ export function ChatView() {
         emotion: aiResponse.emotion,
       };
 
-      setMessages((prev) => [...prev.filter(m => m.role !== 'loading'), newAiMessage]);
+      updateMessages((prev) => [...prev.filter(m => m.role !== 'loading'), newAiMessage]);
     } catch (error) {
       console.error(error);
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
@@ -160,7 +234,7 @@ export function ChatView() {
         title: "AI Error",
         description: errorMessage,
       });
-      setMessages((prev) => prev.filter(m => m.role !== 'loading'));
+      updateMessages((prev) => prev.filter(m => m.role !== 'loading'));
     } finally {
       setIsLoading(false);
     }
@@ -177,103 +251,165 @@ export function ChatView() {
       case 'ask': return 'Ask a question in Telugu...';
       case 'summarize': return 'Paste Telugu text to summarize...';
       case 'image': return 'Describe an image to create in Telugu...';
+      case 'translate': return `Translate from ${sourceLang} to ${targetLang}...`;
       default: return 'Type your message...';
     }
   }
 
   return (
-    <div className="flex flex-col h-full bg-muted/30">
-      <header className="flex items-center justify-between p-4 border-b bg-background shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-full bg-primary/10">
-            <BotIcon className="h-6 w-6 text-primary" />
+    <>
+      <Sidebar side="left">
+        <SidebarHeader>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Chat History</h2>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={createNewChat}>
+              <PlusCircle className="h-5 w-5"/>
+            </Button>
           </div>
-          <h1 className="text-xl font-bold font-headline">Vidyarthi Mitra</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <GradeSelector value={grade} onValueChange={setGrade} />
-          <ThemeToggle />
-        </div>
-      </header>
-
-      <main className="flex-1 flex flex-col min-h-0">
-        <div className="p-4 pb-0">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="">
-            <TabsList className="grid w-full grid-cols-4 bg-muted/60">
-              <TabsTrigger value="chat"><MessageCircle className="mr-2 h-4 w-4"/>Chat</TabsTrigger>
-              <TabsTrigger value="ask"><Search className="mr-2 h-4 w-4"/>Ask a Question</TabsTrigger>
-              <TabsTrigger value="summarize"><Book className="mr-2 h-4 w-4"/>Summarize</TabsTrigger>
-              <TabsTrigger value="image"><ImageIcon className="mr-2 h-4 w-4"/>Create Image</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-
-        <ScrollArea className="flex-1" ref={scrollAreaRef}>
-          <div className="space-y-6 p-4">
-            {messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground pt-20">
-                <BotIcon className="h-16 w-16 mb-4 text-primary/50" />
-                <h2 className="text-2xl font-semibold text-foreground">Welcome!</h2>
-                <p>How can I help you learn today?</p>
-              </div>
-            )}
-            {messages.map((msg) => (
-              <ChatMessage key={msg.id} message={msg} speak={speak} />
-            ))}
-          </div>
-        </ScrollArea>
-      </main>
-
-      <footer className="p-4 pt-2 bg-background border-t space-y-4">
-        {activeTab === 'chat' && (
-          <Alert className="bg-primary/10 border-primary/20 text-primary-foreground/90">
-            <BotIcon className="h-4 w-4 text-primary" />
-            <AlertTitle className="font-semibold text-primary/90">Friendly Reminder</AlertTitle>
-            <AlertDescription className="text-primary/80">
-              AI can make mistakes. Please double-check the information.
-            </AlertDescription>
-          </Alert>
-        )}
-        <form onSubmit={handleSubmit} className="relative">
-          {suggestions.length > 0 && (
-            <div className="absolute bottom-full mb-2 w-full bg-card border rounded-lg shadow-lg p-2 space-y-1 z-10">
-              {suggestions.map((s, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => handleSuggestionClick(s)}
-                  className="w-full text-left p-2 rounded-md hover:bg-muted"
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarMenu>
+          {chatHistory.length > 0 ? (
+            chatHistory.map((chat) => (
+              <SidebarMenuItem key={chat.id}>
+                <SidebarMenuButton
+                  className="w-full justify-start"
+                  isActive={chat.id === currentChatId}
+                  onClick={() => setCurrentChatId(chat.id)}
                 >
-                  {s}
-                </button>
+                  <MessageCircle className="h-4 w-4" />
+                  <span className="truncate">{chat.title}</span>
+                </SidebarMenuButton>
+                <SidebarMenuAction onClick={() => deleteChat(chat.id)}><Trash2/></SidebarMenuAction>
+              </SidebarMenuItem>
+            ))
+          ) : (
+            <div className="p-4 text-center text-sm text-muted-foreground">No chat history yet.</div>
+          )}
+          </SidebarMenu>
+        </SidebarContent>
+        <SidebarFooter>
+           <ThemeToggle />
+        </SidebarFooter>
+      </Sidebar>
+      <div className="flex flex-col h-full bg-muted/30">
+        <header className="flex items-center justify-between p-4 border-b bg-background shrink-0">
+          <div className="flex items-center gap-3">
+            <SidebarTrigger className="md:hidden"/>
+            <div className="p-2 rounded-full bg-primary/10">
+              <BotIcon className="h-6 w-6 text-primary" />
+            </div>
+            <h1 className="text-xl font-bold font-headline">Vidyarthi Mitra</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <GradeSelector value={grade} onValueChange={setGrade} />
+          </div>
+        </header>
+
+        <main className="flex-1 flex flex-col min-h-0">
+          <div className="p-4 pb-0">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="">
+              <TabsList className="grid w-full grid-cols-5 bg-muted/60">
+                <TabsTrigger value="chat"><MessageCircle className="mr-2 h-4 w-4"/>Chat</TabsTrigger>
+                <TabsTrigger value="ask"><Search className="mr-2 h-4 w-4"/>Ask</TabsTrigger>
+                <TabsTrigger value="summarize"><Book className="mr-2 h-4 w-4"/>Summarize</TabsTrigger>
+                <TabsTrigger value="image"><ImageIcon className="mr-2 h-4 w-4"/>Image</TabsTrigger>
+                <TabsTrigger value="translate"><Languages className="mr-2 h-4 w-4"/>Translate</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+          
+          {activeTab === 'translate' && (
+             <div className="flex items-center justify-center gap-4 p-4">
+               <Select value={sourceLang} onValueChange={setSourceLang}>
+                 <SelectTrigger className="w-[120px]">
+                   <SelectValue placeholder="Source" />
+                 </SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="English">English</SelectItem>
+                   <SelectItem value="Telugu">Telugu</SelectItem>
+                 </SelectContent>
+               </Select>
+               <Button variant="ghost" size="icon" onClick={() => { setSourceLang(targetLang); setTargetLang(sourceLang); }}>
+                  <History className="h-5 w-5" />
+               </Button>
+               <Select value={targetLang} onValueChange={setTargetLang}>
+                 <SelectTrigger className="w-[120px]">
+                   <SelectValue placeholder="Target" />
+                 </SelectTrigger>
+                 <SelectContent>
+                    <SelectItem value="English">English</SelectItem>
+                   <SelectItem value="Telugu">Telugu</SelectItem>
+                 </SelectContent>
+               </Select>
+             </div>
+          )}
+
+          <ScrollArea className="flex-1" ref={scrollAreaRef}>
+            <div className="space-y-6 p-4">
+              {messages.length === 0 && !currentChatId && (
+                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground pt-20">
+                  <BotIcon className="h-16 w-16 mb-4 text-primary/50" />
+                  <h2 className="text-2xl font-semibold text-foreground">Welcome!</h2>
+                  <p>Start a new chat or select one from your history.</p>
+                </div>
+              )}
+               {messages.length === 0 && currentChatId && (
+                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground pt-20">
+                  <BotIcon className="h-16 w-16 mb-4 text-primary/50" />
+                  <h2 className="text-2xl font-semibold text-foreground">How can I help?</h2>
+                  <p>Select a feature above and send a message to begin.</p>
+                </div>
+              )}
+              {messages.map((msg) => (
+                <ChatMessage key={msg.id} message={msg} speak={speak} />
               ))}
             </div>
-          )}
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={getPlaceholderText()}
-            className="pr-24 min-h-[52px] resize-none rounded-full px-6 py-3.5"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e as any);
-              }
-            }}
-            disabled={isLoading}
-          />
-          <div className="absolute top-1/2 right-2 -translate-y-1/2 flex items-center gap-1">
-             <Button type="button" size="icon" variant="ghost" className={cn("transition-colors rounded-full", isListening ? "text-destructive bg-destructive/10" : "text-muted-foreground")} onClick={handleVoiceInput} disabled={isLoading}>
-              <Mic className="h-5 w-5" />
-              <span className="sr-only">Voice Input</span>
-            </Button>
-            <Button type="submit" size="icon" className="rounded-full" disabled={isLoading || !input.trim()}>
-              <ArrowUp className="h-5 w-5" />
-              <span className="sr-only">Send</span>
-            </Button>
-          </div>
-        </form>
-      </footer>
-    </div>
+          </ScrollArea>
+        </main>
+
+        <footer className="p-4 pt-2 bg-background border-t space-y-4">
+          <form onSubmit={handleSubmit} className="relative">
+            {suggestions.length > 0 && (
+              <div className="absolute bottom-full mb-2 w-full bg-card border rounded-lg shadow-lg p-2 space-y-1 z-10">
+                {suggestions.map((s, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => handleSuggestionClick(s)}
+                    className="w-full text-left p-2 rounded-md hover:bg-muted"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={getPlaceholderText()}
+              className="pr-24 min-h-[52px] resize-none rounded-full px-6 py-3.5"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e as any);
+                }
+              }}
+              disabled={isLoading || !currentChatId}
+            />
+            <div className="absolute top-1/2 right-2 -translate-y-1/2 flex items-center gap-1">
+              <Button type="button" size="icon" variant="ghost" className={cn("transition-colors rounded-full", isListening ? "text-destructive bg-destructive/10" : "text-muted-foreground")} onClick={handleVoiceInput} disabled={isLoading || !currentChatId}>
+                <Mic className="h-5 w-5" />
+                <span className="sr-only">Voice Input</span>
+              </Button>
+              <Button type="submit" size="icon" className="rounded-full" disabled={isLoading || !input.trim() || !currentChatId}>
+                <ArrowUp className="h-5 w-5" />
+                <span className="sr-only">Send</span>
+              </Button>
+            </div>
+          </form>
+        </footer>
+      </div>
+    </>
   );
 }

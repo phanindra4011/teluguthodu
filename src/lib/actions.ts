@@ -6,6 +6,7 @@ import { provideAutocompleteSuggestions } from "@/ai/flows/provide-autocomplete-
 import { summarizeTextbookContent } from "@/ai/flows/summarize-textbook-content";
 import { casualChat } from "@/ai/flows/casual-chat-flow";
 import { answerQuestion } from "@/ai/flows/answer-question-flow";
+import { translateText } from "@/ai/flows/translate-text-flow";
 
 type AIResponse = {
   responseText?: string;
@@ -14,10 +15,16 @@ type AIResponse = {
   error?: string;
 };
 
+type AIOptions = {
+  sourceLang?: string;
+  targetLang?: string;
+}
+
 export async function getAiResponse(
   prompt: string,
   grade: string,
-  feature: string
+  feature: string,
+  options: AIOptions = {}
 ): Promise<AIResponse> {
   if (!prompt) {
     return { error: "Prompt cannot be empty." };
@@ -57,6 +64,18 @@ export async function getAiResponse(
         });
         imageUrl = imageResponse.imageDataUri;
         responseText = `Here is the image you requested for: "${prompt}"`;
+        break;
+      case "translate":
+        if (!options.sourceLang || !options.targetLang) {
+          return { error: "Source and target languages are required for translation." };
+        }
+        const translateResponse = await translateText({
+          text: prompt,
+          sourceLanguage: options.sourceLang as 'Telugu' | 'English',
+          targetLanguage: options.targetLang as 'Telugu' | 'English',
+          gradeLevel: grade,
+        });
+        responseText = translateResponse.translatedText;
         break;
       default:
         return { error: "Invalid feature selected." };
