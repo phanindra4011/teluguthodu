@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Mic, Send, BotIcon, Book, Image as ImageIcon, MessageCircle, History, Languages, User, Settings, Sun, Moon, Upload } from "lucide-react";
+import { Mic, Send, BotIcon, Book, Image as ImageIcon, MessageCircle, History, Languages, User, Settings, Sun, Moon, Upload, Plus } from "lucide-react";
 import { getAiResponse, getAutocompleteSuggestions } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +14,9 @@ import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { GradeSelector } from "../grade-selector";
+import { Card } from "../ui/card";
+import { formatDistanceToNow } from 'date-fns';
+
 
 export type Message = {
   id: string;
@@ -35,7 +38,7 @@ export function ChatView() {
   const [chatHistory, setChatHistory] = useState<ChatSession[]>([]);
   const [input, setInput] = useState("");
   const [grade, setGrade] = useState("6");
-  const [activeFeature, setActiveFeature] = useState("summarize");
+  const [activeFeature, setActiveFeature] = useState("chat");
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(false);
@@ -58,17 +61,28 @@ export function ChatView() {
 
   // Load chat history from localStorage
   useEffect(() => {
-    const savedHistory = localStorage.getItem("chatHistory");
-    if (savedHistory) {
-      const parsedHistory = JSON.parse(savedHistory) as ChatSession[];
-      setChatHistory(parsedHistory);
-      if (parsedHistory.length > 0) {
-        setCurrentChatId(parsedHistory[0].id);
+    try {
+      const savedHistory = localStorage.getItem("chatHistory");
+      if (savedHistory) {
+        const parsedHistory = JSON.parse(savedHistory) as ChatSession[];
+        setChatHistory(parsedHistory);
+        if (parsedHistory.length > 0) {
+            const latestChat = parsedHistory.sort((a,b) => b.createdAt - a.createdAt)[0];
+            if (latestChat.messages.length > 0) {
+                setCurrentChatId(latestChat.id);
+            } else {
+                // If the latest chat is empty, maybe we should create a new one or select it
+                setCurrentChatId(latestChat.id);
+            }
+        } else {
+          createNewChat();
+        }
       } else {
         createNewChat();
       }
-    } else {
-      createNewChat();
+    } catch (error) {
+        console.error("Failed to parse chat history:", error);
+        createNewChat();
     }
   }, []);
 
@@ -182,8 +196,9 @@ export function ChatView() {
       messages: [],
       createdAt: Date.now()
     };
-    setChatHistory(prev => [newChat, ...prev]);
+    setChatHistory(prev => [newChat, ...prev.sort((a,b) => b.createdAt - a.createdAt)]);
     setCurrentChatId(newChatId);
+    setActiveFeature('chat'); // Default to chat view for new chats
   }
   
   const updateMessages = (newMessages: Message[] | ((prevMessages: Message[]) => Message[])) => {
@@ -211,6 +226,14 @@ export function ChatView() {
 
     if (!currentChatId) {
         createNewChat();
+    }
+
+    // if current chat has no messages, and we are on a feature page, create new chat
+    if (messages.length === 0 && activeFeature !== 'history') {
+        createNewChat();
+        // Await state update to get new chat id
+        setTimeout(() => handleSubmit(e, submissionInput), 50);
+        return;
     }
 
     const userMessage: Message = { id: Date.now().toString(), role: 'user', content: currentInput };
@@ -298,7 +321,6 @@ export function ChatView() {
     }
   };
 
-
   const navItems = [
     { id: 'chat', label: 'Chat', icon: MessageCircle },
     { id: 'summarize', label: 'Summarize', icon: Book },
@@ -306,6 +328,97 @@ export function ChatView() {
     { id: 'translate', label: 'Translate', icon: Languages },
     { id: 'history', label: 'History', icon: History },
   ];
+
+  const welcomeScreens: { [key: string]: { title: string; subtitle: string; prompts: { icon: any; title: string; subtitle: string; action: () => void; }[] } } = {
+    chat: {
+      title: "నమస్కారం! నేను మీ తెలుగు తోడు",
+      subtitle: "మీ చదువులో సహాయం చేసే AI స్నేహితుడిని. ఈ రోజు నేను మీకు ఎలా సహాయపడగలను?",
+      prompts: [
+        { icon: BotIcon, title: "Ask a question", subtitle: "Get a quick explanation of a concept.", action: () => setInput("What is photosynthesis?") },
+        { icon: ImageIcon, title: "Draw a picture", subtitle: "Bring your ideas to life with an image.", action: () => { setActiveFeature("image"); setInput("A serene village in Telangana"); } }
+      ]
+    },
+    summarize: {
+      title: "సారాంశం చేద్దాం",
+      subtitle: "సారాంశం చేయడానికి దయచేసి టెక్స్ట్ అందించండి లేదా పత్రాన్ని అప్‌లోడ్ చేయండి.",
+      prompts: [
+        { icon: Upload, title: "Upload a document", subtitle: ".txt, .pdf, .docx ఫైళ్లను అప్‌లోడ్ చేయండి.", action: () => fileInputRef.current?.click() },
+        { icon: Book, title: "Paste text", subtitle: "Paste text directly into the text box below.", action: () => { document.querySelector('textarea')?.focus() } }
+      ]
+    },
+    image: {
+      title: "ఒక చిత్రాన్ని ఊహించుకోండి",
+      subtitle: "మీరు నన్ను గీయాలనుకుంటున్న చిత్రం గురించి వివరించండి.",
+      prompts: [
+        { icon: ImageIcon, title: "A farmer in a paddy field", subtitle: "Generate an image of a typical scene.", action: () => setInput("A farmer in a paddy field in Telangana") },
+        { icon: ImageIcon, title: "Charminar during sunset", subtitle: "Create a picture of a famous landmark.", action: () => setInput("A realistic image of Charminar during sunset") }
+      ]
+    },
+    translate: {
+      title: "అనువాదం చేద్దాం",
+      subtitle: "తెలుగు మరియు ఇంగ్లీష్ మధ్య అనువదించడానికి టెక్స్ట్ నమోదు చేయండి.",
+      prompts: [
+        { icon: Languages, title: "Translate 'Hello'", subtitle: "Translate a simple word to Telugu.", action: () => setInput("Hello") },
+        { icon: Languages, title: "Translate 'ధన్యవాదాలు'", subtitle: "Translate a Telugu word to English.", action: () => setInput("ధన్యవాదాలు") }
+      ]
+    }
+  };
+
+  const renderWelcomeScreen = () => {
+    if (activeFeature === 'history') {
+      return (
+        <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground pt-10">
+          <div className="w-full max-w-4xl mx-auto">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Chat History</h2>
+            {chatHistory.length > 1 ? (
+              <div className="space-y-4">
+                {chatHistory.filter(c => c.messages.length > 0).map(chat => (
+                  <Card 
+                    key={chat.id} 
+                    className="p-4 text-left hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => {
+                      setCurrentChatId(chat.id);
+                      setActiveFeature('chat');
+                    }}
+                  >
+                    <h3 className="font-semibold text-foreground">{chat.title}</h3>
+                    <p className="text-sm text-muted-foreground truncate">{chat.messages[chat.messages.length -1]?.content ?? '...'}</p>
+                    <p className="text-xs text-muted-foreground mt-2">{formatDistanceToNow(new Date(chat.createdAt), { addSuffix: true })}</p>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <p>No chat history yet. Start a new conversation!</p>
+            )}
+          </div>
+        </div>
+      );
+    }
+    const currentScreen = welcomeScreens[activeFeature];
+    if (!currentScreen) return null;
+
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground pt-20">
+          <div className="bg-primary/10 rounded-full p-4 mb-4">
+              <BotIcon className="h-12 w-12 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold text-foreground mb-2">{currentScreen.title}</h2>
+          <p className="max-w-md mb-8">{currentScreen.subtitle}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
+              {currentScreen.prompts.map((prompt, index) => (
+                  <Button key={index} variant="outline" className="h-auto p-4 flex flex-col items-start gap-2 text-left" onClick={prompt.action}>
+                      <div className="flex items-center gap-2">
+                          <prompt.icon className="w-5 h-5 text-primary"/>
+                          <span className="font-semibold">{prompt.title}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{prompt.subtitle}</p>
+                  </Button>
+              ))}
+          </div>
+      </div>
+    );
+  };
+
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -315,6 +428,14 @@ export function ChatView() {
             <h1 className="text-xl font-bold">తెలుగు తోడు</h1>
         </div>
         <div className="flex-1 flex flex-col gap-2">
+            <Button 
+                variant={'secondary'} 
+                className="justify-start gap-3 mb-4"
+                onClick={createNewChat}
+            >
+                <Plus className="w-5 h-5"/>
+                New Chat
+            </Button>
             {navItems.map(item => (
                 <Button 
                     key={item.id}
@@ -347,7 +468,7 @@ export function ChatView() {
 
       <div className="flex-1 flex flex-col">
         <header className="p-4 border-b flex justify-between items-center">
-          <h2 className="text-lg font-semibold capitalize">{activeFeature}</h2>
+          <h2 className="text-lg font-semibold capitalize">{chatHistory.find(c => c.id === currentChatId)?.title ?? 'Chat'}</h2>
           <div className="flex items-center gap-4">
             {activeFeature === 'summarize' && (
               <>
@@ -366,43 +487,7 @@ export function ChatView() {
           <ScrollArea className="flex-1" ref={scrollAreaRef}>
             <div className="space-y-6 p-4 md:p-6">
               {messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground pt-20">
-                    <div className="bg-primary/10 rounded-full p-4 mb-4">
-                        <BotIcon className="h-12 w-12 text-primary" />
-                    </div>
-                    <h2 className="text-2xl font-bold text-foreground mb-2">నమస్కారం! నేను మీ తెలుగు తోడు</h2>
-                    <p className="max-w-md mb-8">మీ చదువులో సహాయం చేసే AI స్నేహితుడిని. ఈ రోజు నేను మీకు ఎలా సహాయపడగలను?</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
-                        <Button variant="outline" className="h-auto p-4 flex flex-col items-start gap-2 text-left" onClick={() => handleFeatureSuggestionClick('ask', 'What is photosynthesis?')}>
-                            <div className="flex items-center gap-2">
-                                <BotIcon className="w-5 h-5 text-primary"/>
-                                <span className="font-semibold">Ask a question</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground">Get a quick explanation of a concept.</p>
-                        </Button>
-                        <Button variant="outline" className="h-auto p-4 flex flex-col items-start gap-2 text-left" onClick={() => handleFeatureSuggestionClick('image', 'A serene village in Telangana')}>
-                             <div className="flex items-center gap-2">
-                                <ImageIcon className="w-5 h-5 text-primary"/>
-                                <span className="font-semibold">Draw a picture</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground">Bring your ideas to life with an image.</p>
-                        </Button>
-                         <Button variant="outline" className="h-auto p-4 flex flex-col items-start gap-2 text-left" onClick={() => handleFeatureSuggestionClick('summarize', 'Please provide the text you want to summarize.')}>
-                            <div className="flex items-center gap-2">
-                                <Book className="w-5 h-5 text-primary"/>
-                                <span className="font-semibold">Summarize</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground">Summarize a long piece of text.</p>
-                        </Button>
-                         <Button variant="outline" className="h-auto p-4 flex flex-col items-start gap-2 text-left" onClick={() => handleFeatureSuggestionClick('translate', 'Enter text to translate...')}>
-                             <div className="flex items-center gap-2">
-                                <Languages className="w-5 h-5 text-primary"/>
-                                <span className="font-semibold">Translate</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground">Translate between Telugu and English.</p>
-                        </Button>
-                    </div>
-                </div>
+                renderWelcomeScreen()
               ) : (
                 messages.map((msg) => (
                   <ChatMessage key={msg.id} message={msg} speak={speak} />
@@ -430,7 +515,12 @@ export function ChatView() {
               <Textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="ఏదైనా అడగండి..."
+                placeholder={
+                    activeFeature === 'image' ? 'చిత్రాన్ని వివరించండి...' :
+                    activeFeature === 'summarize' ? 'సారాంశం కోసం టెక్స్ట్ నమోదు చేయండి...' :
+                    activeFeature === 'translate' ? 'అనువాదం కోసం టెక్స్ట్ నమోదు చేయండి...' :
+                    'ఏదైనా అడగండి...'
+                }
                 className="pr-24 min-h-[52px] resize-none rounded-xl border-input bg-card px-4 py-3.5"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -438,14 +528,14 @@ export function ChatView() {
                     handleSubmit(e as any);
                   }
                 }}
-                disabled={isLoading || !currentChatId}
+                disabled={isLoading}
               />
               <div className="absolute top-1/2 right-3 -translate-y-1/2 flex items-center gap-2">
-                <Button type="button" size="icon" variant="ghost" className={cn("transition-colors rounded-full text-muted-foreground", isListening && "text-destructive")} onClick={handleVoiceInput} disabled={isLoading || !currentChatId}>
+                <Button type="button" size="icon" variant="ghost" className={cn("transition-colors rounded-full text-muted-foreground", isListening && "text-destructive")} onClick={handleVoiceInput} disabled={isLoading}>
                   <Mic className="h-5 w-5" />
                   <span className="sr-only">Voice Input</span>
                 </Button>
-                <Button type="submit" size="icon" className="rounded-full w-9 h-9 bg-primary text-primary-foreground hover:bg-primary/90" disabled={isLoading || !input.trim() || !currentChatId}>
+                <Button type="submit" size="icon" className="rounded-full w-9 h-9 bg-primary text-primary-foreground hover:bg-primary/90" disabled={isLoading || !input.trim()}>
                   <Send className="h-5 w-5" />
                   <span className="sr-only">Send</span>
                 </Button>
@@ -458,5 +548,3 @@ export function ChatView() {
     </div>
   );
 }
-
-    
