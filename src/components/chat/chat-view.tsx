@@ -68,11 +68,10 @@ export function ChatView() {
         setChatHistory(parsedHistory);
         if (parsedHistory.length > 0) {
             const latestChat = parsedHistory.sort((a,b) => b.createdAt - a.createdAt)[0];
-            if (latestChat.messages.length > 0) {
+            if (latestChat) {
                 setCurrentChatId(latestChat.id);
             } else {
-                // If the latest chat is empty, maybe we should create a new one or select it
-                setCurrentChatId(latestChat.id);
+                createNewChat();
             }
         } else {
           createNewChat();
@@ -88,10 +87,10 @@ export function ChatView() {
 
   // Save chat history to localStorage
   useEffect(() => {
-    if (chatHistory.length > 0) {
+    if (chatHistory.length > 0 && currentChatId) {
       localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
     }
-  }, [chatHistory]);
+  }, [chatHistory, currentChatId]);
 
   const messages = chatHistory.find(chat => chat.id === currentChatId)?.messages ?? [];
 
@@ -188,7 +187,7 @@ export function ChatView() {
     }
   }, [toast]);
 
-  const createNewChat = () => {
+  const createNewChat = useCallback(() => {
     const newChatId = Date.now().toString();
     const newChat: ChatSession = {
       id: newChatId,
@@ -196,19 +195,19 @@ export function ChatView() {
       messages: [],
       createdAt: Date.now()
     };
-    setChatHistory(prev => [newChat, ...prev.sort((a,b) => b.createdAt - a.createdAt)]);
+    setChatHistory(prev => [newChat, ...prev.filter(c => c.id !== newChat.id).sort((a,b) => b.createdAt - a.createdAt)]);
     setCurrentChatId(newChatId);
-    setActiveFeature('chat'); // Default to chat view for new chats
-  }
+    return newChatId;
+  }, []);
   
-  const updateMessages = (newMessages: Message[] | ((prevMessages: Message[]) => Message[])) => {
+  const updateMessages = (chatId: string, newMessages: Message[] | ((prevMessages: Message[]) => Message[])) => {
     setChatHistory(prev =>
       prev.map(chat => {
-        if (chat.id === currentChatId) {
+        if (chat.id === chatId) {
           const updatedMessages = typeof newMessages === 'function' ? newMessages(chat.messages) : newMessages;
           
           let newTitle = chat.title;
-          if (chat.title === 'New Chat' && updatedMessages.length > 0 && updatedMessages[0].role === 'user') {
+          if ((chat.title === 'New Chat' || !chat.title) && updatedMessages.length > 0 && updatedMessages[0].role === 'user') {
             newTitle = updatedMessages[0].content?.substring(0, 30) || 'Chat';
           }
 
@@ -224,20 +223,38 @@ export function ChatView() {
     const currentInput = submissionInput || input;
     if (!currentInput.trim() || isLoading) return;
 
-    if (!currentChatId) {
-        createNewChat();
-    }
+    let chatId = currentChatId;
+    let isNewChat = false;
 
-    // if current chat has no messages, and we are on a feature page, create new chat
-    if (messages.length === 0 && activeFeature !== 'history') {
-        createNewChat();
-        // Await state update to get new chat id
-        setTimeout(() => handleSubmit(e, submissionInput), 50);
+    // If the current chat has messages, or we are in the history view, we don't create a new chat.
+    // Otherwise, we create a new one.
+    const currentMessages = chatHistory.find(c => c.id === chatId)?.messages ?? [];
+    if (currentMessages.length === 0 && activeFeature !== 'history') {
+        chatId = createNewChat();
+        isNewChat = true;
+    }
+    
+    if (!chatId) {
+        console.error("No chat ID available to send message.");
+        toast({
+            variant: 'destructive',
+            title: "Error",
+            description: "Could not start a new chat session. Please refresh the page.",
+        });
         return;
     }
 
     const userMessage: Message = { id: Date.now().toString(), role: 'user', content: currentInput };
-    updateMessages((prev) => [...prev, userMessage, { id: 'loading', role: 'loading' }]);
+    
+    // Use a function form of updateMessages to ensure we're updating the correct chat,
+    // especially if a new one was just created.
+    const loadingMessage = { id: 'loading', role: 'loading' } as Message;
+    if (isNewChat) {
+        updateMessages(chatId, [userMessage, loadingMessage]);
+    } else {
+        updateMessages(chatId, (prev) => [...prev, userMessage, loadingMessage]);
+    }
+
     setInput("");
     setSuggestions([]);
     setIsLoading(true);
@@ -257,7 +274,7 @@ export function ChatView() {
         emotion: aiResponse.emotion,
       };
 
-      updateMessages((prev) => [...prev.filter(m => m.role !== 'loading'), newAiMessage]);
+      updateMessages(chatId, (prev) => [...prev.filter(m => m.role !== 'loading'), newAiMessage]);
     } catch (error) {
       console.error(error);
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
@@ -266,7 +283,7 @@ export function ChatView() {
         title: "AI Error",
         description: errorMessage,
       });
-      updateMessages((prev) => prev.filter(m => m.role !== 'loading'));
+      updateMessages(chatId, (prev) => prev.filter(m => m.role !== 'loading'));
     } finally {
       setIsLoading(false);
     }
@@ -276,11 +293,6 @@ export function ChatView() {
     setInput(suggestion);
     setSuggestions([]);
     handleSubmit({ preventDefault: () => {} }, suggestion);
-  };
-
-  const handleFeatureSuggestionClick = (feature: string, prompt: string) => {
-    setActiveFeature(feature);
-    setInput(prompt);
   };
   
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -307,6 +319,7 @@ export function ChatView() {
       const data = await response.json();
       setInput(data.text);
       toast({ title: "File processed successfully!", description: "The extracted text has been placed in the text area." });
+      setActiveFeature('summarize');
 
     } catch (error) {
       console.error("File upload error:", error);
@@ -338,10 +351,10 @@ export function ChatView() {
       title: "నమస్కారం! నేను మీ విద్యార్థి మిత్ర",
       subtitle: "మీ చదువులో సహాయం చేసే AI స్నేహితుడిని. ఈ రోజు నేను మీకు ఎలా సహాయపడగలను?",
       prompts: [
-        { icon: BotIcon, title: "Ask a question", subtitle: "Get a quick explanation of a concept.", action: () => setInput("What is photosynthesis?") },
-        { icon: ImageIcon, title: "Draw a picture", subtitle: "Bring your ideas to life with an image.", action: () => { setActiveFeature("image"); setInput("A serene village in Telangana"); } },
-        { icon: Book, title: "Summarize text", subtitle: "Condense a long passage into key points.", action: () => { setActiveFeature("summarize"); } },
-        { icon: Languages, title: "Translate something", subtitle: "Translate between Telugu and English.", action: () => { setActiveFeature("translate"); } },
+        { icon: BotIcon, title: "Ask a question", subtitle: "What is photosynthesis?", action: () => handleSuggestionClick("What is photosynthesis?") },
+        { icon: ImageIcon, title: "Draw a picture", subtitle: "A serene village in Telangana", action: () => { setActiveFeature("image"); handleSuggestionClick("A serene village in Telangana"); } },
+        { icon: Book, title: "Summarize text", subtitle: "Click to switch to Summarize feature", action: () => { setActiveFeature("summarize"); } },
+        { icon: Languages, title: "Translate something", subtitle: "Translate 'Hello' to Telugu", action: () => { setActiveFeature("translate"); handleSuggestionClick("Hello"); } },
       ]
     },
     summarize: {
@@ -356,16 +369,16 @@ export function ChatView() {
       title: "ఒక చిత్రాన్ని ఊహించుకోండి",
       subtitle: "మీరు నన్ను గీయాలనుకుంటున్న చిత్రం గురించి వివరించండి.",
       prompts: [
-        { icon: ImageIcon, title: "A farmer in a paddy field", subtitle: "Generate an image of a typical scene.", action: () => setInput("A farmer in a paddy field in Telangana") },
-        { icon: ImageIcon, title: "Charminar during sunset", subtitle: "Create a picture of a famous landmark.", action: () => setInput("A realistic image of Charminar during sunset") }
+        { icon: ImageIcon, title: "A farmer in a paddy field", subtitle: "in Telangana", action: () => handleSuggestionClick("A farmer in a paddy field in Telangana") },
+        { icon: ImageIcon, title: "Charminar during sunset", subtitle: "A realistic image", action: () => handleSuggestionClick("A realistic image of Charminar during sunset") }
       ]
     },
     translate: {
       title: "అనువాదం చేద్దాం",
       subtitle: "తెలుగు మరియు ఇంగ్లీష్ మధ్య అనువదించడానికి టెక్స్ట్ నమోదు చేయండి.",
       prompts: [
-        { icon: Languages, title: "Translate 'Hello'", subtitle: "Translate a simple word to Telugu.", action: () => setInput("Hello") },
-        { icon: Languages, title: "Translate 'ధన్యవాదాలు'", subtitle: "Translate a Telugu word to English.", action: () => setInput("ధన్యవాదాలు") }
+        { icon: Languages, title: "Translate 'Hello'", subtitle: "to Telugu", action: () => handleSuggestionClick("Hello") },
+        { icon: Languages, title: "Translate 'ధన్యవాదాలు'", subtitle: "to English", action: () => handleSuggestionClick("ధన్యవాదాలు") }
       ]
     }
   };
@@ -376,7 +389,7 @@ export function ChatView() {
         <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground pt-10">
           <div className="w-full max-w-4xl mx-auto">
             <h2 className="text-2xl font-bold text-foreground mb-6">Chat History</h2>
-            {chatHistory.length > 1 ? (
+            {chatHistory.filter(c => c.messages.length > 0).length > 0 ? (
               <div className="space-y-4">
                 {chatHistory.filter(c => c.messages.length > 0).map(chat => (
                   <Card 
