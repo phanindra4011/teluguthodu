@@ -10,6 +10,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { translateText } from './translate-text-flow';
 
 const GenerateImageInputSchema = z.object({
   teluguText: z
@@ -35,10 +36,21 @@ const generateImageFlow = ai.defineFlow(
     inputSchema: GenerateImageInputSchema,
     outputSchema: GenerateImageOutputSchema,
   },
-  async input => {
-    const {media} = await ai.generate({
+  async (input) => {
+    // Translate the Telugu text to English first
+    const { translatedText: englishPrompt } = await translateText({
+      text: input.teluguText,
+      sourceLanguage: 'Telugu',
+      targetLanguage: 'English',
+      gradeLevel: '10', // Grade level doesn't matter much for image prompt translation
+    });
+
+    // Enhance the prompt for a better style
+    const styledPrompt = `A vibrant, cartoonish, and friendly illustration suitable for children's educational material, depicting: ${englishPrompt}`;
+
+    const { media } = await ai.generate({
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
-      prompt: input.teluguText,
+      prompt: styledPrompt,
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
       },
@@ -48,6 +60,6 @@ const generateImageFlow = ai.defineFlow(
       throw new Error('No image was generated.');
     }
 
-    return {imageDataUri: media.url};
+    return { imageDataUri: media.url };
   }
 );

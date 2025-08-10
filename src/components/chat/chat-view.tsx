@@ -331,11 +331,13 @@ export function ChatView() {
 
   const welcomeScreens: { [key: string]: { title: string; subtitle: string; prompts: { icon: any; title: string; subtitle: string; action: () => void; }[] } } = {
     chat: {
-      title: "నమస్కారం! నేను మీ తెలుగు తోడు",
+      title: "నమస్కారం! నేను మీ విద్యార్థి మిత్ర",
       subtitle: "మీ చదువులో సహాయం చేసే AI స్నేహితుడిని. ఈ రోజు నేను మీకు ఎలా సహాయపడగలను?",
       prompts: [
         { icon: BotIcon, title: "Ask a question", subtitle: "Get a quick explanation of a concept.", action: () => setInput("What is photosynthesis?") },
-        { icon: ImageIcon, title: "Draw a picture", subtitle: "Bring your ideas to life with an image.", action: () => { setActiveFeature("image"); setInput("A serene village in Telangana"); } }
+        { icon: ImageIcon, title: "Draw a picture", subtitle: "Bring your ideas to life with an image.", action: () => { setActiveFeature("image"); setInput("A serene village in Telangana"); } },
+        { icon: Book, title: "Summarize text", subtitle: "Condense a long passage into key points.", action: () => { setActiveFeature("summarize"); } },
+        { icon: Languages, title: "Translate something", subtitle: "Translate between Telugu and English.", action: () => { setActiveFeature("translate"); } },
       ]
     },
     summarize: {
@@ -541,7 +543,7 @@ export function ChatView() {
                 </Button>
               </div>
             </form>
-            <p className="text-xs text-center text-muted-foreground">తెలుగు తోడు AI తప్పులు చేయగలదు. దయచేసి సమాచారాన్ని సరిచూసుకోండి.</p>
+            <p className="text-xs text-center text-muted-foreground">Vidyarthi Mitra can make mistakes. Please verify important information.</p>
           </footer>
         </main>
       </div>

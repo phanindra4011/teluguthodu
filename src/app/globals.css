@@ -8,48 +8,65 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 210 20% 98%; /* Very pale blue */
     --foreground: 224 71.4% 4.1%;
-    --card: 0 0% 100%;
+    
+    --card: 210 20% 98%;
     --card-foreground: 224 71.4% 4.1%;
-    --popover: 0 0% 100%;
+    
+    --popover: 210 20% 98%;
     --popover-foreground: 224 71.4% 4.1%;
-    --primary: 262 88% 66%;
-    --primary-foreground: 210 20% 98%;
+    
+    --primary: 206 88% 76%; /* Light blue */
+    --primary-foreground: 224 71.4% 4.1%;
+    
     --secondary: 220 14.3% 95.9%;
     --secondary-foreground: 220.9 39.3% 11%;
+
     --muted: 220 14.3% 95.9%;
     --muted-foreground: 220 8.9% 46.1%;
-    --accent: 220 14.3% 95.9%;
-    --accent-foreground: 220.9 39.3% 11%;
+    
+    --accent: 35 88% 70%; /* Yellow-orange */
+    --accent-foreground: 224 71.4% 4.1%;
+    
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 20% 98%;
+    
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 262 88% 66%;
+    --ring: 206 88% 76%;
+    
     --radius: 0.5rem;
   }
  
   .dark {
-    --background: 228 9% 11%;
+    --background: 207 90% 4%; /* Near white -> a very dark blue */
     --foreground: 210 20% 98%;
-    --card: 228 9% 14%;
+
+    --card: 207 90% 8%; /* a slighly lighter dark blue */
     --card-foreground: 210 20% 98%;
-    --popover: 228 9% 11%;
+
+    --popover: 207 90% 4%;
     --popover-foreground: 210 20% 98%;
-    --primary: 262 88% 66%;
-    --primary-foreground: 210 20% 98%;
-    --secondary: 215 27.9% 16.9%;
+
+    --primary: 206 88% 76%; /* Light Blue */
+    --primary-foreground: 207 90% 4%;
+
+    --secondary: 207 90% 12%;
     --secondary-foreground: 210 20% 98%;
-    --muted: 215 27.9% 16.9%;
+
+    --muted: 207 90% 12%;
     --muted-foreground: 217.9 10.6% 64.9%;
-    --accent: 215 27.9% 16.9%;
-    --accent-foreground: 210 20% 98%;
+
+    --accent: 35 88% 70%; /* Yellow-orange */
+    --accent-foreground: 207 90% 4%;
+
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 20% 98%;
-    --border: 215 27.9% 16.9%;
-    --input: 215 27.9% 20.9%;
-    --ring: 262 88% 60%;
+
+    --border: 207 90% 15%;
+    --input: 207 90% 15%;
+    --ring: 206 88% 76%;
   }
 }
 
@@ -59,5 +76,6 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    background-color: hsl(var(--background));
   }
 }

@@ -19,7 +19,7 @@ export type SummarizeTextbookContentInput = z.infer<typeof SummarizeTextbookCont
 const SummarizeTextbookContentOutputSchema = z.object({
   summary: z
     .string()
-    .describe('A summary of the textbook content, no more than 3000 words.'),
+    .describe('A summary of the textbook content, no more than 300 words.'),
   progress: z.string().describe('A short, one-sentence summary of the summarization progress.'),
 });
 export type SummarizeTextbookContentOutput = z.infer<typeof SummarizeTextbookContentOutputSchema>;
@@ -34,9 +34,9 @@ const prompt = ai.definePrompt({
   name: 'summarizeTextbookContentPrompt',
   input: {schema: SummarizeTextbookContentInputSchema},
   output: {schema: SummarizeTextbookContentOutputSchema},
-  prompt: `You are an expert in Telugu language and literature, specializing in creating summaries for students.
+  prompt: `You are Vidyarthi Mitra, an expert in Telugu language and literature, specializing in creating summaries for students.
 
-  Summarize the following content from a Telugu textbook in a way that is easy for students to understand. The summary should be no more than 3000 words and use simple, easily understandable Telugu appropriate for students in grades 1-10. Avoid complex words and sentence structures.
+  Summarize the following content from a Telugu textbook in a way that is easy for students to understand. The summary should be no more than 300 words and use simple, easily understandable Telugu appropriate for students in grades 1-10. Avoid complex words and sentence structures. Maintain a supportive and positive tone.
 
   IMPORTANT: You must respond ONLY in Telugu.
 
