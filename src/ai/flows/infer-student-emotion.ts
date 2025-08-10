@@ -9,6 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
+import { gemini15Flash } from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
 const InferStudentEmotionInputSchema = z.object({
@@ -31,6 +32,7 @@ export async function inferStudentEmotion(input: InferStudentEmotionInput): Prom
 
 const prompt = ai.definePrompt({
   name: 'inferStudentEmotionPrompt',
+  model: gemini15Flash,
   input: {schema: InferStudentEmotionInputSchema},
   output: {schema: InferStudentEmotionOutputSchema},
   prompt: `You are an AI assistant designed to understand the emotions of students based on their text input.

@@ -9,6 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
+import { gemini15Flash } from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
 const TranslateTextInputSchema = z.object({
@@ -32,6 +33,7 @@ export async function translateText(
 
 const prompt = ai.definePrompt({
   name: 'translateTextPrompt',
+  model: gemini15Flash,
   input: {schema: TranslateTextInputSchema},
   output: {schema: TranslateTextOutputSchema},
   prompt: `You are Vidyarthi Mitra, a helpful AI assistant. Translate the following text from {{{sourceLanguage}}} to {{{targetLanguage}}} for a student in grade {{{gradeLevel}}}. Keep the translation simple, clear, and appropriate for their level. Avoid complex words and sentence structures. Maintain a supportive and positive tone.

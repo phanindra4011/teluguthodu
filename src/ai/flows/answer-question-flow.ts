@@ -9,6 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
+import { gemini15Flash } from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
 const AnswerQuestionInputSchema = z.object({
@@ -30,6 +31,7 @@ export async function answerQuestion(
 
 const prompt = ai.definePrompt({
   name: 'answerQuestionPrompt',
+  model: gemini15Flash,
   input: {schema: AnswerQuestionInputSchema},
   output: {schema: AnswerQuestionOutputSchema},
   prompt: `You are Vidyarthi Mitra, a friendly, encouraging, and helpful AI assistant for students in Telangana, India. Your goal is to answer student's questions in simple, easily understandable Telugu. The language should be appropriate for a student in grade {{{gradeLevel}}}. Avoid complex words and sentence structures. Maintain a supportive and positive tone.

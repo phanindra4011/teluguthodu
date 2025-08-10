@@ -9,6 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
+import { gemini15Flash } from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
 const SummarizeTextbookContentInputSchema = z.object({
@@ -32,6 +33,7 @@ export async function summarizeTextbookContent(
 
 const prompt = ai.definePrompt({
   name: 'summarizeTextbookContentPrompt',
+  model: gemini15Flash,
   input: {schema: SummarizeTextbookContentInputSchema},
   output: {schema: SummarizeTextbookContentOutputSchema},
   prompt: `You are Vidyarthi Mitra, an expert in Telugu language and literature, specializing in creating summaries for students.

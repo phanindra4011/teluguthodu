@@ -9,6 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
+import { gemini15Flash } from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
 const CasualChatInputSchema = z.object({
@@ -30,6 +31,7 @@ export async function casualChat(
 
 const prompt = ai.definePrompt({
   name: 'casualChatPrompt',
+  model: gemini15Flash,
   input: {schema: CasualChatInputSchema},
   output: {schema: CasualChatOutputSchema},
   prompt: `You are Vidyarthi Mitra, a friendly, encouraging, and helpful AI assistant for students in Telangana, India. Your goal is to have a casual, encouraging, and supportive conversation in simple, easily understandable Telugu. The language should be appropriate for a student in grade {{{gradeLevel}}}. Avoid complex words and sentence structures.

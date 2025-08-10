@@ -9,6 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
+import { gemini15Flash } from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
 const AutocompleteSuggestionsInputSchema = z.object({
@@ -28,6 +29,7 @@ export async function provideAutocompleteSuggestions(input: AutocompleteSuggesti
 
 const prompt = ai.definePrompt({
   name: 'autocompleteSuggestionsPrompt',
+  model: gemini15Flash,
   input: {schema: AutocompleteSuggestionsInputSchema},
   output: {schema: AutocompleteSuggestionsOutputSchema},
   prompt: `You are an AI assistant designed to provide autocomplete suggestions for Telugu text.
