@@ -38,7 +38,7 @@ export function ChatView() {
   const [chatHistory, setChatHistory] = useState<ChatSession[]>([]);
   const [input, setInput] = useState("");
   const [grade, setGrade] = useState("6");
-  const [activeFeature, setActiveFeature] = useState("summarize");
+  const [activeFeature, setActiveFeature] = useState("chat");
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(false);
@@ -83,14 +83,15 @@ export function ChatView() {
         console.error("Failed to parse chat history:", error);
         createNewChat();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Save chat history to localStorage
   useEffect(() => {
-    if (chatHistory.length > 0 && currentChatId) {
+    if (chatHistory.length > 0) {
       localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
     }
-  }, [chatHistory, currentChatId]);
+  }, [chatHistory]);
 
   const messages = chatHistory.find(chat => chat.id === currentChatId)?.messages ?? [];
 
@@ -195,8 +196,14 @@ export function ChatView() {
       messages: [],
       createdAt: Date.now()
     };
-    setChatHistory(prev => [newChat, ...prev.filter(c => c.id !== newChat.id).sort((a,b) => b.createdAt - a.createdAt)]);
+    
+    setChatHistory(prev => {
+        const sortedHistory = [newChat, ...prev].sort((a,b) => b.createdAt - a.createdAt);
+        return sortedHistory;
+    });
+
     setCurrentChatId(newChatId);
+    setActiveFeature('chat'); // Default to chat view for new chats
     return newChatId;
   }, []);
   
@@ -224,36 +231,16 @@ export function ChatView() {
     if (!currentInput.trim() || isLoading) return;
 
     let chatId = currentChatId;
-    let isNewChat = false;
+    let currentMessages = chatHistory.find(c => c.id === chatId)?.messages ?? [];
 
-    // If the current chat has messages, or we are in the history view, we don't create a new chat.
-    // Otherwise, we create a new one.
-    const currentMessages = chatHistory.find(c => c.id === chatId)?.messages ?? [];
-    if (currentMessages.length === 0 && activeFeature !== 'history') {
+    if (!chatId || (currentMessages.length > 0 && activeFeature === 'history')) {
         chatId = createNewChat();
-        isNewChat = true;
-    }
-    
-    if (!chatId) {
-        console.error("No chat ID available to send message.");
-        toast({
-            variant: 'destructive',
-            title: "Error",
-            description: "Could not start a new chat session. Please refresh the page.",
-        });
-        return;
     }
 
     const userMessage: Message = { id: Date.now().toString(), role: 'user', content: currentInput };
+    const loadingMessage: Message = { id: 'loading', role: 'loading' };
     
-    // Use a function form of updateMessages to ensure we're updating the correct chat,
-    // especially if a new one was just created.
-    const loadingMessage = { id: 'loading', role: 'loading' } as Message;
-    if (isNewChat) {
-        updateMessages(chatId, [userMessage, loadingMessage]);
-    } else {
-        updateMessages(chatId, (prev) => [...prev, userMessage, loadingMessage]);
-    }
+    updateMessages(chatId, (prev) => [...prev, userMessage, loadingMessage]);
 
     setInput("");
     setSuggestions([]);
@@ -274,7 +261,7 @@ export function ChatView() {
         emotion: aiResponse.emotion,
       };
 
-      updateMessages(chatId, (prev) => [...prev.filter(m => m.role !== 'loading'), newAiMessage]);
+      updateMessages(chatId, (prev) => [...prev.filter(m => m.id !== 'loading'), newAiMessage]);
     } catch (error) {
       console.error(error);
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
@@ -283,7 +270,7 @@ export function ChatView() {
         title: "AI Error",
         description: errorMessage,
       });
-      updateMessages(chatId, (prev) => prev.filter(m => m.role !== 'loading'));
+      updateMessages(chatId, (prev) => prev.filter(m => m.id !== 'loading'));
     } finally {
       setIsLoading(false);
     }
