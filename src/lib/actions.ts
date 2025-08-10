@@ -63,7 +63,7 @@ export async function getAiResponse(
           teluguText: prompt,
         });
         imageUrl = imageResponse.imageDataUri;
-        responseText = `మీరు అభ్యర్థించిన చిత్రం ఇక్కడ ఉంది: "${prompt}"`;
+        responseText = `Here is the image you requested for: "${prompt}"`;
         break;
       case "translate":
         if (!options.sourceLang || !options.targetLang) {
