@@ -66,19 +66,24 @@ export async function getAiResponse(
         responseText = `Here is the image you requested for: "${prompt}"`;
         break;
       case "translate":
-        if (!options.sourceLang || !options.targetLang) {
-          return { error: "Source and target languages are required for translation." };
-        }
+        const sourceLang = prompt.match(/[a-zA-Z]/) ? 'English' : 'Telugu';
+        const targetLang = sourceLang === 'English' ? 'Telugu' : 'English';
+
         const translateResponse = await translateText({
           text: prompt,
-          sourceLanguage: options.sourceLang as 'Telugu' | 'English',
-          targetLanguage: options.targetLang as 'Telugu' | 'English',
+          sourceLanguage: sourceLang,
+          targetLanguage: targetLang,
           gradeLevel: grade,
         });
         responseText = translateResponse.translatedText;
         break;
       default:
-        return { error: "Invalid feature selected." };
+        // Default to chat if feature is unknown
+        const defaultResponse = await casualChat({
+            message: prompt,
+            gradeLevel: grade,
+        });
+        responseText = defaultResponse.response;
     }
 
     const emotionResult = await emotionPromise;

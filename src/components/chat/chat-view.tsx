@@ -1,24 +1,17 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { CornerDownLeft, Mic, Search, BotIcon, Book, Image as ImageIcon, MessageCircle, ArrowUp, History, PlusCircle, Trash2, Languages, Upload } from "lucide-react";
+import { Mic, Send, BotIcon, Book, Image as ImageIcon, MessageCircle, History, Languages, User, Settings, Sun, Moon } from "lucide-react";
 import { getAiResponse, getAutocompleteSuggestions } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { GradeSelector } from "@/components/grade-selector";
 import { ChatMessage } from "@/components/chat/chat-message";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { Sidebar, SidebarHeader, SidebarContent, SidebarTrigger, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuAction, SidebarFooter } from "@/components/ui/sidebar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mascot, type MascotMood } from "@/components/chat/mascot";
-import React from "react";
-import { Slot } from "@radix-ui/react-slot";
+import { useTheme } from "next-themes";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export type Message = {
   id: string;
@@ -40,19 +33,16 @@ export function ChatView() {
   const [chatHistory, setChatHistory] = useState<ChatSession[]>([]);
   const [input, setInput] = useState("");
   const [grade, setGrade] = useState("6");
-  const [activeTab, setActiveTab] = useState("chat");
+  const [activeFeature, setActiveFeature] = useState("chat");
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(false);
-  const [sourceLang, setSourceLang] = useState('English');
-  const [targetLang, setTargetLang] = useState('Telugu');
-  const [mascotMood, setMascotMood] = useState<MascotMood>('neutral');
-
+  
+  const { theme, setTheme } = useTheme();
   const { toast } = useToast();
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const debouncedInput = useDebounce(input, 300);
 
@@ -101,8 +91,10 @@ export function ChatView() {
         setSuggestions([]);
       }
     };
-    fetchAutocomplete();
-  }, [debouncedInput, grade]);
+    if (activeFeature === 'chat' || activeFeature === 'ask') {
+        fetchAutocomplete();
+    }
+  }, [debouncedInput, grade, activeFeature]);
 
   useEffect(() => {
     if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
@@ -182,28 +174,8 @@ export function ChatView() {
     };
     setChatHistory(prev => [newChat, ...prev]);
     setCurrentChatId(newChatId);
-    setMascotMood('neutral');
   }
-
-  const deleteChat = (chatId: string) => {
-    setChatHistory(prev => {
-        const newHistory = prev.filter(chat => chat.id !== chatId);
-        if (currentChatId === chatId) {
-            const nextChat = newHistory.length > 0 ? newHistory[0].id : null;
-            setCurrentChatId(nextChat);
-            if (!nextChat) {
-                // If no chats are left, create a new one.
-                setTimeout(createNewChat, 0);
-            }
-        }
-        if (newHistory.length === 0) {
-            localStorage.removeItem("chatHistory");
-        }
-        return newHistory;
-    });
-}
-
-
+  
   const updateMessages = (newMessages: Message[] | ((prevMessages: Message[]) => Message[])) => {
     setChatHistory(prev =>
       prev.map(chat => {
@@ -222,33 +194,23 @@ export function ChatView() {
     );
   };
   
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | { preventDefault: () => void; }, submissionInput?: string) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    const currentInput = submissionInput || input;
+    if (!currentInput.trim() || isLoading) return;
 
     if (!currentChatId) {
-        // This case should ideally not happen due to the useEffect logic
-        // but as a fallback, we create a new chat.
-        const newChatId = Date.now().toString();
-        const newChat: ChatSession = {
-          id: newChatId,
-          title: 'New Chat',
-          messages: [],
-          createdAt: Date.now()
-        };
-        setChatHistory(prev => [newChat, ...prev]);
-        setCurrentChatId(newChatId);
+        createNewChat();
     }
 
-    const userMessage: Message = { id: Date.now().toString(), role: 'user', content: input };
+    const userMessage: Message = { id: Date.now().toString(), role: 'user', content: currentInput };
     updateMessages((prev) => [...prev, userMessage, { id: 'loading', role: 'loading' }]);
     setInput("");
     setSuggestions([]);
     setIsLoading(true);
-    setMascotMood('neutral');
 
     try {
-      const aiResponse = await getAiResponse(input, grade, activeTab, {sourceLang, targetLang});
+      const aiResponse = await getAiResponse(currentInput, grade, activeFeature);
       
       const newAiMessage: Message = {
         id: Date.now().toString() + "-ai",
@@ -257,15 +219,6 @@ export function ChatView() {
         imageUrl: aiResponse.imageUrl,
         emotion: aiResponse.emotion,
       };
-
-      if (aiResponse.emotion) {
-        const emotion = aiResponse.emotion.toLowerCase();
-        if (emotion.includes('confus') || emotion.includes('frustrat')) {
-          setMascotMood('encouraging');
-        } else if (emotion.includes('curious') || emotion.includes('happy') || emotion.includes('excit')) {
-          setMascotMood('happy');
-        }
-      }
 
       updateMessages((prev) => [...prev.filter(m => m.role !== 'loading'), newAiMessage]);
     } catch (error) {
@@ -277,7 +230,6 @@ export function ChatView() {
         description: errorMessage,
       });
       updateMessages((prev) => prev.filter(m => m.role !== 'loading'));
-      setMascotMood('encouraging');
     } finally {
       setIsLoading(false);
     }
@@ -288,192 +240,139 @@ export function ChatView() {
     setSuggestions([]);
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target?.result as string;
-        setInput(text);
-      };
-      reader.readAsText(file);
-    }
+  const handleFeatureSuggestionClick = (feature: string, prompt: string) => {
+    setActiveFeature(feature);
+    handleSubmit({ preventDefault: () => {} }, prompt);
   };
 
-  const getPlaceholderText = () => {
-    switch(activeTab) {
-      case 'chat': return 'Talk with your AI friend...';
-      case 'ask': return 'Ask a question...';
-      case 'summarize': return 'Paste text to summarize...';
-      case 'image': return 'Describe an image to create...';
-      case 'translate': return `Translate from ${sourceLang} to ${targetLang}...`;
-      default: return 'Type your message...';
-    }
-  }
+  const navItems = [
+    { id: 'chat', label: 'Chat', icon: MessageCircle },
+    { id: 'summarize', label: 'Summarize', icon: Book },
+    { id: 'image', label: 'Imagine', icon: ImageIcon },
+    { id: 'translate', label: 'Translate', icon: Languages },
+    { id: 'history', label: 'History', icon: History },
+  ];
 
   return (
-    <>
-      <Sidebar side="left">
-        <SidebarHeader>
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Chat History</h2>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={createNewChat}>
-              <PlusCircle className="h-5 w-5"/>
-            </Button>
-          </div>
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarMenu>
-          {chatHistory.length > 0 ? (
-            chatHistory.map((chat) => (
-              <SidebarMenuItem key={chat.id}>
-                <SidebarMenuButton
-                  className="w-full justify-start"
-                  isActive={chat.id === currentChatId}
-                  onClick={() => setCurrentChatId(chat.id)}
+    <div className="flex h-screen bg-background text-foreground">
+      <nav className="w-64 flex flex-col p-4 bg-card border-r">
+        <div className="flex items-center gap-2 mb-8">
+            <BotIcon className="w-8 h-8 text-primary"/>
+            <h1 className="text-xl font-bold">తెలుగు తోడు</h1>
+        </div>
+        <div className="flex-1 flex flex-col gap-2">
+            {navItems.map(item => (
+                <Button 
+                    key={item.id}
+                    variant={activeFeature === item.id ? 'secondary' : 'ghost'} 
+                    className="justify-start gap-3"
+                    onClick={() => setActiveFeature(item.id)}
                 >
-                  <MessageCircle className="h-4 w-4" />
-                  <span className="truncate">{chat.title}</span>
-                </SidebarMenuButton>
-                <SidebarMenuAction onClick={() => deleteChat(chat.id)}><Trash2/></SidebarMenuAction>
-              </SidebarMenuItem>
-            ))
-          ) : (
-            <div className="p-4 text-center text-sm text-muted-foreground">No chat history yet.</div>
-          )}
-          </SidebarMenu>
-        </SidebarContent>
-        <SidebarFooter>
-           <ThemeToggle />
-        </SidebarFooter>
-      </Sidebar>
-      <div className="flex flex-col h-full bg-muted/30">
-        <header className="flex items-center justify-between p-4 border-b bg-background shrink-0">
-          <div className="flex items-center gap-3">
-            <SidebarTrigger className="md:hidden"/>
-            <Mascot mood={mascotMood} className="h-10 w-10 text-primary" />
-            <h1 className="text-xl font-bold font-headline">Telugu Thodu</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <GradeSelector value={grade} onValueChange={setGrade} />
-          </div>
+                    <item.icon className="w-5 h-5"/>
+                    {item.label}
+                </Button>
+            ))}
+        </div>
+        <div className="flex flex-col gap-2">
+           <Button variant='ghost' className="justify-start gap-3">
+              <Avatar className="h-6 w-6">
+                <AvatarFallback className="bg-primary/20 text-xs">U</AvatarFallback>
+              </Avatar>
+              Profile
+            </Button>
+            <div className="flex justify-around">
+                <Button variant="ghost" size="icon" onClick={() => {}}><Settings className="w-5 h-5"/></Button>
+                <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+                    {theme === 'dark' ? <Sun className="w-5 h-5"/> : <Moon className="w-5 h-5"/>}
+                </Button>
+            </div>
+        </div>
+      </nav>
+
+      <div className="flex-1 flex flex-col">
+        <header className="p-4 border-b">
+          <h2 className="text-lg font-semibold capitalize">{activeFeature}</h2>
         </header>
 
-        <main className="flex-1 flex flex-col min-h-0">
-          <div className="p-4 pb-0">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="">
-              <TabsList className="grid w-full grid-cols-5 bg-muted/60">
-                <TabsTrigger value="chat"><MessageCircle className="mr-2 h-4 w-4"/>Chat</TabsTrigger>
-                <TabsTrigger value="ask"><Search className="mr-2 h-4 w-4"/>Ask</TabsTrigger>
-                <TabsTrigger value="summarize"><Book className="mr-2 h-4 w-4"/>Summarize</TabsTrigger>
-                <TabsTrigger value="image"><ImageIcon className="mr-2 h-4 w-4"/>Image</TabsTrigger>
-                <TabsTrigger value="translate"><Languages className="mr-2 h-4 w-4"/>Translate</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-          
-          <div className="flex items-center justify-center gap-4 p-4">
-            {activeTab === 'translate' && (
-              <>
-                <Select value={sourceLang} onValueChange={setSourceLang}>
-                  <SelectTrigger className="w-[120px]">
-                    <SelectValue placeholder="Source" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="English">English</SelectItem>
-                    <SelectItem value="Telugu">Telugu</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button variant="ghost" size="icon" onClick={() => { setSourceLang(targetLang); setTargetLang(sourceLang); }}>
-                    <History className="h-5 w-5" />
-                </Button>
-                <Select value={targetLang} onValueChange={setTargetLang}>
-                  <SelectTrigger className="w-[120px]">
-                    <SelectValue placeholder="Target" />
-                  </SelectTrigger>
-                  <SelectContent>
-                      <SelectItem value="English">English</SelectItem>
-                    <SelectItem value="Telugu">Telugu</SelectItem>
-                  </SelectContent>
-                </Select>
-              </>
-            )}
-             {activeTab === 'summarize' && (
-                <>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept=".txt"
-                  />
-                  <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload Document
-                  </Button>
-                </>
-             )}
-          </div>
-
-
+        <main className="flex-1 flex flex-col min-h-0 bg-background">
           <ScrollArea className="flex-1" ref={scrollAreaRef}>
-            <div className="space-y-6 p-4">
-              {messages.length === 0 && (
+            <div className="space-y-6 p-4 md:p-6">
+              {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground pt-20">
-                  <BotIcon className="h-16 w-16 mb-4 text-primary/50" />
-                  <h2 className="text-2xl font-semibold text-foreground">How can I help you?</h2>
-                  <p>Select a feature above and send a message to get started.</p>
+                    <div className="bg-primary/10 rounded-full p-4 mb-4">
+                        <BotIcon className="h-12 w-12 text-primary" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-foreground mb-2">నమస్కారం! నేను మీ తెలుగు తోడు</h2>
+                    <p className="max-w-md mb-8">మీ చదువులో సహాయం చేసే AI స్నేహితుడిని. ఈ రోజు నేను మీకు ఎలా సహాయపడగలను?</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
+                        <Button variant="outline" className="h-auto p-4 flex flex-col items-start gap-2 text-left" onClick={() => handleFeatureSuggestionClick('ask', 'What is photosynthesis?')}>
+                            <div className="flex items-center gap-2">
+                                <BotIcon className="w-5 h-5 text-primary"/>
+                                <span className="font-semibold">ప్రశ్న అడగండి</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">Get a quick explanation of a concept.</p>
+                        </Button>
+                        <Button variant="outline" className="h-auto p-4 flex flex-col items-start gap-2 text-left" onClick={() => handleFeatureSuggestionClick('image', 'A serene village in Telangana')}>
+                             <div className="flex items-center gap-2">
+                                <ImageIcon className="w-5 h-5 text-primary"/>
+                                <span className="font-semibold">చిత్రాన్ని గీయండి</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">Bring your ideas to life with an image.</p>
+                        </Button>
+                    </div>
                 </div>
+              ) : (
+                messages.map((msg) => (
+                  <ChatMessage key={msg.id} message={msg} speak={speak} />
+                ))
               )}
-              {messages.map((msg) => (
-                <ChatMessage key={msg.id} message={msg} speak={speak} />
-              ))}
             </div>
           </ScrollArea>
-        </main>
 
-        <footer className="p-4 pt-2 bg-background border-t space-y-4">
-          <form onSubmit={handleSubmit} className="relative">
-            {suggestions.length > 0 && (
-              <div className="absolute bottom-full mb-2 w-full bg-card border rounded-lg shadow-lg p-2 space-y-1 z-10">
-                {suggestions.map((s, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => handleSuggestionClick(s)}
-                    className="w-full text-left p-2 rounded-md hover:bg-muted"
-                  >
-                    {s}
-                  </button>
-                ))}
+          <footer className="p-4 pt-2 bg-background space-y-2">
+            <form onSubmit={handleSubmit} className="relative">
+              {suggestions.length > 0 && (
+                <div className="absolute bottom-full mb-2 w-full bg-card border rounded-lg shadow-lg p-2 space-y-1 z-10">
+                  {suggestions.map((s, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => handleSuggestionClick(s)}
+                      className="w-full text-left p-2 rounded-md hover:bg-muted"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <Textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="ఏదైనా అడగండి..."
+                className="pr-24 min-h-[52px] resize-none rounded-xl border-input bg-card px-4 py-3.5"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit(e as any);
+                  }
+                }}
+                disabled={isLoading || !currentChatId}
+              />
+              <div className="absolute top-1/2 right-3 -translate-y-1/2 flex items-center gap-2">
+                <Button type="button" size="icon" variant="ghost" className={cn("transition-colors rounded-full text-muted-foreground", isListening && "text-destructive")} onClick={handleVoiceInput} disabled={isLoading || !currentChatId}>
+                  <Mic className="h-5 w-5" />
+                  <span className="sr-only">Voice Input</span>
+                </Button>
+                <Button type="submit" size="icon" className="rounded-full w-9 h-9 bg-primary text-primary-foreground hover:bg-primary/90" disabled={isLoading || !input.trim() || !currentChatId}>
+                  <Send className="h-5 w-5" />
+                  <span className="sr-only">Send</span>
+                </Button>
               </div>
-            )}
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={getPlaceholderText()}
-              className="pr-24 min-h-[52px] resize-none rounded-full px-6 py-3.5"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit(e as any);
-                }
-              }}
-              disabled={isLoading || !currentChatId}
-            />
-            <div className="absolute top-1/2 right-2 -translate-y-1/2 flex items-center gap-1">
-              <Button type="button" size="icon" variant="ghost" className={cn("transition-colors rounded-full", isListening ? "text-destructive bg-destructive/10" : "text-muted-foreground")} onClick={handleVoiceInput} disabled={isLoading || !currentChatId}>
-                <Mic className="h-5 w-5" />
-                <span className="sr-only">Voice Input</span>
-              </Button>
-              <Button type="submit" size="icon" className="rounded-full" disabled={isLoading || !input.trim() || !currentChatId}>
-                <ArrowUp className="h-5 w-5" />
-                <span className="sr-only">Send</span>
-              </Button>
-            </div>
-          </form>
-        </footer>
+            </form>
+            <p className="text-xs text-center text-muted-foreground">తెలుగు తోడు AI తప్పులు చేయగలదు. దయచేసి సమాచారాన్ని సరిచూసుకోండి.</p>
+          </footer>
+        </main>
       </div>
-    </>
+    </div>
   );
 }
