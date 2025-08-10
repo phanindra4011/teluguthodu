@@ -4,6 +4,7 @@ import { generateImageFromTeluguText } from "@/ai/flows/generate-image-from-telu
 import { inferStudentEmotion } from "@/ai/flows/infer-student-emotion";
 import { provideAutocompleteSuggestions } from "@/ai/flows/provide-autocomplete-suggestions";
 import { summarizeTextbookContent } from "@/ai/flows/summarize-textbook-content";
+import { casualChat } from "@/ai/flows/casual-chat-flow";
 
 type AIResponse = {
   responseText?: string;
@@ -29,6 +30,13 @@ export async function getAiResponse(
     const emotionPromise = inferStudentEmotion({ studentInput: prompt });
 
     switch (feature) {
+      case "chat":
+        const chatResponse = await casualChat({
+            message: prompt,
+            gradeLevel: grade,
+        });
+        responseText = chatResponse.response;
+        break;
       case "ask":
       case "summarize":
         const summaryResponse = await summarizeTextbookContent({

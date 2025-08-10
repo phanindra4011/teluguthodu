@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { CornerDownLeft, Mic, Search, BotIcon, Book, Image as ImageIcon } from "lucide-react";
+import { CornerDownLeft, Mic, Search, BotIcon, Book, Image as ImageIcon, MessageCircle } from "lucide-react";
 import { getAiResponse, getAutocompleteSuggestions } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,7 +26,7 @@ export function ChatView() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [grade, setGrade] = useState("6");
-  const [activeTab, setActiveTab] = useState("ask");
+  const [activeTab, setActiveTab] = useState("chat");
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(false);
@@ -172,6 +172,7 @@ export function ChatView() {
 
   const getPlaceholderText = () => {
     switch(activeTab) {
+      case 'chat': return 'Talk to your AI friend in Telugu...';
       case 'ask': return 'Ask a question in Telugu...';
       case 'summarize': return 'Paste Telugu text to summarize...';
       case 'image': return 'Describe an image to create in Telugu...';
@@ -191,7 +192,8 @@ export function ChatView() {
 
       <main className="flex-1 flex flex-col min-h-0">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="p-4 pb-0">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="chat"><MessageCircle className="mr-2 h-4 w-4"/>Chat</TabsTrigger>
             <TabsTrigger value="ask"><Search className="mr-2 h-4 w-4"/>Ask a Question</TabsTrigger>
             <TabsTrigger value="summarize"><Book className="mr-2 h-4 w-4"/>Summarize</TabsTrigger>
             <TabsTrigger value="image"><ImageIcon className="mr-2 h-4 w-4"/>Create Image</TabsTrigger>
