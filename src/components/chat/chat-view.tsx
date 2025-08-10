@@ -267,7 +267,7 @@ export function ChatView() {
       <nav className="w-64 flex flex-col p-4 bg-card border-r">
         <div className="flex items-center gap-2 mb-8">
             <BotIcon className="w-8 h-8 text-primary"/>
-            <h1 className="text-xl font-bold">Telugu Thodu</h1>
+            <h1 className="text-xl font-bold">తెలుగు తోడు</h1>
         </div>
         <div className="flex-1 flex flex-col gap-2">
             {navItems.map(item => (

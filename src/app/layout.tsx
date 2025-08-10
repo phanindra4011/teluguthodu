@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from '@/components/theme-provider';
 
 export const metadata: Metadata = {
-  title: 'Telugu Thodu',
+  title: 'తెలుగు తోడు',
   description: 'An AI-powered learning assistant for Telugu students.',
 };
 
