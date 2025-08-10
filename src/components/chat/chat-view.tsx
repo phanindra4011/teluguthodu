@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { CornerDownLeft, Mic, Search, BotIcon, Book, Image as ImageIcon, MessageCircle } from "lucide-react";
+import { CornerDownLeft, Mic, Search, BotIcon, Book, Image as ImageIcon, MessageCircle, ArrowUp } from "lucide-react";
 import { getAiResponse, getAutocompleteSuggestions } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -181,27 +181,38 @@ export function ChatView() {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <header className="flex items-center justify-between p-4 border-b shrink-0">
+    <div className="flex flex-col h-full bg-muted/30">
+      <header className="flex items-center justify-between p-4 border-b bg-background shrink-0">
         <div className="flex items-center gap-3">
-          <BotIcon className="h-8 w-8 text-primary" />
+          <div className="p-2 rounded-full bg-primary/10">
+            <BotIcon className="h-6 w-6 text-primary" />
+          </div>
           <h1 className="text-xl font-bold font-headline">Vidyarthi Mitra</h1>
         </div>
         <GradeSelector value={grade} onValueChange={setGrade} />
       </header>
 
       <main className="flex-1 flex flex-col min-h-0">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="p-4 pb-0">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="chat"><MessageCircle className="mr-2 h-4 w-4"/>Chat</TabsTrigger>
-            <TabsTrigger value="ask"><Search className="mr-2 h-4 w-4"/>Ask a Question</TabsTrigger>
-            <TabsTrigger value="summarize"><Book className="mr-2 h-4 w-4"/>Summarize</TabsTrigger>
-            <TabsTrigger value="image"><ImageIcon className="mr-2 h-4 w-4"/>Create Image</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="p-4 pb-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="">
+            <TabsList className="grid w-full grid-cols-4 bg-muted/60">
+              <TabsTrigger value="chat"><MessageCircle className="mr-2 h-4 w-4"/>Chat</TabsTrigger>
+              <TabsTrigger value="ask"><Search className="mr-2 h-4 w-4"/>Ask a Question</TabsTrigger>
+              <TabsTrigger value="summarize"><Book className="mr-2 h-4 w-4"/>Summarize</TabsTrigger>
+              <TabsTrigger value="image"><ImageIcon className="mr-2 h-4 w-4"/>Create Image</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
 
-        <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
-          <div className="space-y-6">
+        <ScrollArea className="flex-1" ref={scrollAreaRef}>
+          <div className="space-y-6 p-4">
+            {messages.length === 0 && (
+              <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground pt-20">
+                <BotIcon className="h-16 w-16 mb-4 text-primary/50" />
+                <h2 className="text-2xl font-semibold text-foreground">Welcome!</h2>
+                <p>How can I help you learn today?</p>
+              </div>
+            )}
             {messages.map((msg) => (
               <ChatMessage key={msg.id} message={msg} speak={speak} />
             ))}
@@ -209,14 +220,16 @@ export function ChatView() {
         </ScrollArea>
       </main>
 
-      <footer className="p-4 pt-0 border-t space-y-4">
-        <Alert className="bg-accent/10 border-accent/20">
-          <BotIcon className="h-4 w-4 text-accent" />
-          <AlertTitle className="font-semibold text-accent-foreground/90">Friendly Reminder</AlertTitle>
-          <AlertDescription className="text-accent-foreground/80">
-            AI can make mistakes. Please double-check the information.
-          </AlertDescription>
-        </Alert>
+      <footer className="p-4 pt-2 bg-background border-t space-y-4">
+        {activeTab === 'chat' && (
+          <Alert className="bg-primary/10 border-primary/20 text-primary-foreground/90">
+            <BotIcon className="h-4 w-4 text-primary" />
+            <AlertTitle className="font-semibold text-primary/90">Friendly Reminder</AlertTitle>
+            <AlertDescription className="text-primary/80">
+              AI can make mistakes. Please double-check the information.
+            </AlertDescription>
+          </Alert>
+        )}
         <form onSubmit={handleSubmit} className="relative">
           {suggestions.length > 0 && (
             <div className="absolute bottom-full mb-2 w-full bg-card border rounded-lg shadow-lg p-2 space-y-1 z-10">
@@ -236,7 +249,7 @@ export function ChatView() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={getPlaceholderText()}
-            className="pr-24 min-h-[52px] resize-none"
+            className="pr-24 min-h-[52px] resize-none rounded-full px-6 py-3.5"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -245,13 +258,13 @@ export function ChatView() {
             }}
             disabled={isLoading}
           />
-          <div className="absolute top-1/2 right-3 -translate-y-1/2 flex items-center gap-2">
-             <Button type="button" size="icon" variant="ghost" className={cn("transition-colors", isListening ? "text-destructive" : "")} onClick={handleVoiceInput} disabled={isLoading}>
+          <div className="absolute top-1/2 right-2 -translate-y-1/2 flex items-center gap-1">
+             <Button type="button" size="icon" variant="ghost" className={cn("transition-colors rounded-full", isListening ? "text-destructive bg-destructive/10" : "text-muted-foreground")} onClick={handleVoiceInput} disabled={isLoading}>
               <Mic className="h-5 w-5" />
               <span className="sr-only">Voice Input</span>
             </Button>
-            <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
-              <CornerDownLeft className="h-5 w-5" />
+            <Button type="submit" size="icon" className="rounded-full" disabled={isLoading || !input.trim()}>
+              <ArrowUp className="h-5 w-5" />
               <span className="sr-only">Send</span>
             </Button>
           </div>

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Message } from "@/components/chat/chat-view";
 import { Button } from "@/components/ui/button";
-import { Volume2 } from "lucide-react";
+import { Volume2, UserIcon } from "lucide-react";
 import Image from "next/image";
 import { Skeleton } from "../ui/skeleton";
 
@@ -26,8 +26,8 @@ export function ChatMessage({ message, speak }: ChatMessageProps) {
       className={cn("flex items-start gap-4", isUser ? "justify-end" : "")}
     >
       {!isUser && (
-        <Avatar className="h-10 w-10 border-2 border-primary/20">
-          <AvatarFallback>
+        <Avatar className="h-10 w-10 border-2 border-primary/20 shrink-0">
+          <AvatarFallback className="bg-primary/10">
             <BotIcon className="h-6 w-6 text-primary" />
           </AvatarFallback>
         </Avatar>
@@ -39,28 +39,28 @@ export function ChatMessage({ message, speak }: ChatMessageProps) {
         )}
       >
         {emotion && (
-          <Badge variant="outline" className="capitalize">
+          <Badge variant="outline" className="capitalize border-accent/50 bg-accent/10 text-accent-foreground">
             Feeling: {emotion}
           </Badge>
         )}
         <Card
           className={cn(
-            "max-w-md w-full",
+            "max-w-xl w-full rounded-2xl",
             isUser
-              ? "bg-primary/20"
-              : "bg-card"
+              ? "bg-primary text-primary-foreground rounded-br-none"
+              : "bg-card rounded-bl-none"
           )}
         >
           <CardContent className="p-4">
             {isLoading ? (
               <div className="flex items-center space-x-2">
-                <Skeleton className="h-2 w-2 rounded-full animate-pulse [animation-delay:0s]" />
-                <Skeleton className="h-2 w-2 rounded-full animate-pulse [animation-delay:0.2s]" />
-                <Skeleton className="h-2 w-2 rounded-full animate-pulse [animation-delay:0.4s]" />
+                <Skeleton className="h-2.5 w-2.5 bg-muted-foreground/30 rounded-full animate-pulse [animation-delay:0s]" />
+                <Skeleton className="h-2.5 w-2.5 bg-muted-foreground/30 rounded-full animate-pulse [animation-delay:0.2s]" />
+                <Skeleton className="h-2.5 w-2.5 bg-muted-foreground/30 rounded-full animate-pulse [animation-delay:0.4s]" />
               </div>
             ) : (
               <>
-                {content && <p className="text-foreground">{content}</p>}
+                {content && <p className="text-current">{content}</p>}
                 {imageUrl && (
                   <div className="mt-2">
                     <Image
@@ -90,9 +90,9 @@ export function ChatMessage({ message, speak }: ChatMessageProps) {
         )}
       </div>
       {isUser && (
-        <Avatar className="h-10 w-10 border-2 border-accent/20">
-          <AvatarFallback className="bg-accent/30 text-accent-foreground font-bold">
-            You
+        <Avatar className="h-10 w-10 border-2 border-accent/20 shrink-0">
+           <AvatarFallback className="bg-accent/10">
+            <UserIcon className="h-6 w-6 text-accent" />
           </AvatarFallback>
         </Avatar>
       )}
