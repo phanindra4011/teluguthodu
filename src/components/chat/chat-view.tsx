@@ -255,17 +255,48 @@ export function ChatView() {
     setInput(prompt);
   };
   
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target?.result as string;
-        setInput(text);
-      };
-      reader.readAsText(file);
+    if (!file) return;
+
+    setIsLoading(true);
+    toast({ title: "Uploading and processing file..." });
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'File processing failed');
+      }
+
+      const data = await response.json();
+      setInput(data.text);
+      toast({ title: "File processed successfully!", description: "The extracted text has been placed in the text area." });
+
+    } catch (error) {
+      console.error("File upload error:", error);
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during file upload.";
+      toast({
+        variant: 'destructive',
+        title: "File Upload Error",
+        description: errorMessage,
+      });
+    } finally {
+      setIsLoading(false);
+      // Reset file input
+      if(fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
+
 
   const navItems = [
     { id: 'chat', label: 'Chat', icon: MessageCircle },
@@ -318,8 +349,8 @@ export function ChatView() {
           <h2 className="text-lg font-semibold capitalize">{activeFeature}</h2>
           {activeFeature === 'summarize' && (
             <>
-              <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".txt" className="hidden" />
-              <Button onClick={() => fileInputRef.current?.click()} variant="outline" size="sm">
+              <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".txt,.pdf,.docx" className="hidden" />
+              <Button onClick={() => fileInputRef.current?.click()} variant="outline" size="sm" disabled={isLoading}>
                 <Upload className="w-4 h-4 mr-2" />
                 Upload Document
               </Button>
