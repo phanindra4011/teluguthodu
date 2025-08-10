@@ -36,7 +36,7 @@ const prompt = ai.definePrompt({
   output: {schema: SummarizeTextbookContentOutputSchema},
   prompt: `You are an expert in Telugu language and literature, specializing in creating summaries for students.
 
-  Summarize the following content from a Telugu textbook in a way that is easy for students to understand. The summary should be no more than 3000 words and use simple Telugu.
+  Summarize the following content from a Telugu textbook in a way that is easy for students to understand. The summary should be no more than 3000 words and use simple, easily understandable Telugu appropriate for students in grades 1-10. Avoid complex words and sentence structures.
 
   IMPORTANT: You must respond ONLY in Telugu.
 
@@ -44,7 +44,6 @@ const prompt = ai.definePrompt({
 
   Make sure the summary contains all the key points from the original content.
   Include a progress message that briefly describes the summarization process.
-  The student is in grades 1-10, use language appropriate for those students.
 `,
 });
 

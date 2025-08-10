@@ -34,7 +34,7 @@ const prompt = ai.definePrompt({
   name: 'translateTextPrompt',
   input: {schema: TranslateTextInputSchema},
   output: {schema: TranslateTextOutputSchema},
-  prompt: `You are a helpful AI assistant. Translate the following text from {{{sourceLanguage}}} to {{{targetLanguage}}} for a student in grade {{{gradeLevel}}}. Keep the translation simple and appropriate for their level.
+  prompt: `You are a helpful AI assistant. Translate the following text from {{{sourceLanguage}}} to {{{targetLanguage}}} for a student in grade {{{gradeLevel}}}. Keep the translation simple, clear, and appropriate for their level. Avoid complex words and sentence structures.
 
 IMPORTANT: If the target language is Telugu, you must respond ONLY in Telugu.
 

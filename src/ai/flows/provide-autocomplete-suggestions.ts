@@ -39,11 +39,11 @@ const prompt = ai.definePrompt({
 
   Generate a list of autocomplete suggestions that the user might be trying to type. Consider the student's grade level ({{{gradeLevel}}}), if provided, and tailor the suggestions accordingly. Use common Telugu words, phrases, and content from Telangana state textbooks for grades 1-10.
 
-  Respond with an array of strings, where each string is an autocomplete suggestion.
-
   The suggestions should be relevant to the input text and the student's grade level.
-  The suggestions should be in simple Telugu.
+  The suggestions should be in simple, easily understandable Telugu.
   The suggestions should not repeat the input text.
+
+  Respond with an array of strings, where each string is an autocomplete suggestion.
 `,
 });
 

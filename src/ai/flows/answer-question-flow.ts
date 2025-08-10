@@ -32,7 +32,7 @@ const prompt = ai.definePrompt({
   name: 'answerQuestionPrompt',
   input: {schema: AnswerQuestionInputSchema},
   output: {schema: AnswerQuestionOutputSchema},
-  prompt: `You are Telugu Thodu, a friendly and helpful AI assistant for students in Telangana, India. Your goal is to answer student's questions in simple Telugu. The student is in grade {{{gradeLevel}}}.
+  prompt: `You are Telugu Thodu, a friendly and helpful AI assistant for students in Telangana, India. Your goal is to answer student's questions in simple, easily understandable Telugu. The language should be appropriate for a student in grade {{{gradeLevel}}}. Avoid complex words and sentence structures.
 
 IMPORTANT: You must respond ONLY in Telugu.
 

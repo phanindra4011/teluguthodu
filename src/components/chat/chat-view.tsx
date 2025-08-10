@@ -64,7 +64,11 @@ export function ChatView() {
       setChatHistory(parsedHistory);
       if (parsedHistory.length > 0) {
         setCurrentChatId(parsedHistory[0].id);
+      } else {
+        createNewChat();
       }
+    } else {
+      createNewChat();
     }
   }, []);
 
@@ -182,11 +186,23 @@ export function ChatView() {
   }
 
   const deleteChat = (chatId: string) => {
-    setChatHistory(prev => prev.filter(chat => chat.id !== chatId));
-    if (currentChatId === chatId) {
-      setCurrentChatId(chatHistory.length > 1 ? chatHistory[1].id : null);
-    }
-  }
+    setChatHistory(prev => {
+        const newHistory = prev.filter(chat => chat.id !== chatId);
+        if (currentChatId === chatId) {
+            const nextChat = newHistory.length > 0 ? newHistory[0].id : null;
+            setCurrentChatId(nextChat);
+            if (!nextChat) {
+                // If no chats are left, create a new one.
+                setTimeout(createNewChat, 0);
+            }
+        }
+        if (newHistory.length === 0) {
+            localStorage.removeItem("chatHistory");
+        }
+        return newHistory;
+    });
+}
+
 
   const updateMessages = (newMessages: Message[] | ((prevMessages: Message[]) => Message[])) => {
     setChatHistory(prev =>
@@ -202,7 +218,7 @@ export function ChatView() {
           return { ...chat, messages: updatedMessages, title: newTitle };
         }
         return chat;
-      })
+      }).sort((a,b) => b.createdAt - a.createdAt)
     );
   };
   
@@ -211,8 +227,19 @@ export function ChatView() {
     if (!input.trim() || isLoading) return;
 
     if (!currentChatId) {
-        createNewChat();
+        // This case should ideally not happen due to the useEffect logic
+        // but as a fallback, we create a new chat.
+        const newChatId = Date.now().toString();
+        const newChat: ChatSession = {
+          id: newChatId,
+          title: 'New Chat',
+          messages: [],
+          createdAt: Date.now()
+        };
+        setChatHistory(prev => [newChat, ...prev]);
+        setCurrentChatId(newChatId);
     }
+
     const userMessage: Message = { id: Date.now().toString(), role: 'user', content: input };
     updateMessages((prev) => [...prev, userMessage, { id: 'loading', role: 'loading' }]);
     setInput("");
@@ -275,10 +302,10 @@ export function ChatView() {
 
   const getPlaceholderText = () => {
     switch(activeTab) {
-      case 'chat': return 'మీ AI స్నేహితుడితో తెలుగులో మాట్లాడండి...';
-      case 'ask': return 'తెలుగులో ఒక ప్రశ్న అడగండి...';
-      case 'summarize': return 'సంగ్రహించడానికి తెలుగు వచనాన్ని అతికించండి...';
-      case 'image': return 'తెలుగులో సృష్టించాల్సిన చిత్రాన్ని వివరించండి...';
+      case 'chat': return 'మీ AI స్నేహితుడితో మాట్లాడండి...';
+      case 'ask': return 'ఒక ప్రశ్న అడగండి...';
+      case 'summarize': return 'సంగ్రహించడానికి వచనాన్ని అతికించండి...';
+      case 'image': return 'సృష్టించాల్సిన చిత్రాన్ని వివరించండి...';
       case 'translate': return `${sourceLang} నుండి ${targetLang}కు అనువదించండి...`;
       default: return 'మీ సందేశాన్ని టైప్ చేయండి...';
     }
@@ -391,14 +418,7 @@ export function ChatView() {
 
           <ScrollArea className="flex-1" ref={scrollAreaRef}>
             <div className="space-y-6 p-4">
-              {messages.length === 0 && !currentChatId && (
-                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground pt-20">
-                  <BotIcon className="h-16 w-16 mb-4 text-primary/50" />
-                  <h2 className="text-2xl font-semibold text-foreground">స్వాగతం!</h2>
-                  <p>కొత్త చాట్‌ను ప్రారంభించండి లేదా మీ చరిత్ర నుండి ఒకదాన్ని ఎంచుకోండి.</p>
-                </div>
-              )}
-               {messages.length === 0 && currentChatId && (
+              {messages.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground pt-20">
                   <BotIcon className="h-16 w-16 mb-4 text-primary/50" />
                   <h2 className="text-2xl font-semibold text-foreground">నేను ఎలా సహాయపడగలను?</h2>
