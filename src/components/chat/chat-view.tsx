@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Mic, Send, BotIcon, Book, Image as ImageIcon, MessageCircle, History, Languages, User, Settings, Sun, Moon } from "lucide-react";
+import { Mic, Send, BotIcon, Book, Image as ImageIcon, MessageCircle, History, Languages, User, Settings, Sun, Moon, Upload } from "lucide-react";
 import { getAiResponse, getAutocompleteSuggestions } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,7 +34,7 @@ export function ChatView() {
   const [chatHistory, setChatHistory] = useState<ChatSession[]>([]);
   const [input, setInput] = useState("");
   const [grade, setGrade] = useState("6");
-  const [activeFeature, setActiveFeature] = useState("chat");
+  const [activeFeature, setActiveFeature] = useState("summarize");
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(false);
@@ -44,6 +44,7 @@ export function ChatView() {
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const debouncedInput = useDebounce(input, 300);
 
@@ -253,6 +254,18 @@ export function ChatView() {
     setActiveFeature(feature);
     setInput(prompt);
   };
+  
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        setInput(text);
+      };
+      reader.readAsText(file);
+    }
+  };
 
   const navItems = [
     { id: 'chat', label: 'Chat', icon: MessageCircle },
@@ -301,8 +314,17 @@ export function ChatView() {
       </nav>
 
       <div className="flex-1 flex flex-col">
-        <header className="p-4 border-b">
+        <header className="p-4 border-b flex justify-between items-center">
           <h2 className="text-lg font-semibold capitalize">{activeFeature}</h2>
+          {activeFeature === 'summarize' && (
+            <>
+              <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".txt" className="hidden" />
+              <Button onClick={() => fileInputRef.current?.click()} variant="outline" size="sm">
+                <Upload className="w-4 h-4 mr-2" />
+                Upload Document
+              </Button>
+            </>
+          )}
         </header>
 
         <main className="flex-1 flex flex-col min-h-0 bg-background">
@@ -319,28 +341,28 @@ export function ChatView() {
                         <Button variant="outline" className="h-auto p-4 flex flex-col items-start gap-2 text-left" onClick={() => handleFeatureSuggestionClick('ask', 'What is photosynthesis?')}>
                             <div className="flex items-center gap-2">
                                 <BotIcon className="w-5 h-5 text-primary"/>
-                                <span className="font-semibold">ప్రశ్న అడగండి</span>
+                                <span className="font-semibold">Ask a question</span>
                             </div>
                             <p className="text-xs text-muted-foreground">Get a quick explanation of a concept.</p>
                         </Button>
                         <Button variant="outline" className="h-auto p-4 flex flex-col items-start gap-2 text-left" onClick={() => handleFeatureSuggestionClick('image', 'A serene village in Telangana')}>
                              <div className="flex items-center gap-2">
                                 <ImageIcon className="w-5 h-5 text-primary"/>
-                                <span className="font-semibold">చిత్రాన్ని గీయండి</span>
+                                <span className="font-semibold">Draw a picture</span>
                             </div>
                             <p className="text-xs text-muted-foreground">Bring your ideas to life with an image.</p>
                         </Button>
                          <Button variant="outline" className="h-auto p-4 flex flex-col items-start gap-2 text-left" onClick={() => handleFeatureSuggestionClick('summarize', 'Please provide the text you want to summarize.')}>
                             <div className="flex items-center gap-2">
                                 <Book className="w-5 h-5 text-primary"/>
-                                <span className="font-semibold">సారాంశం చేయండి</span>
+                                <span className="font-semibold">Summarize</span>
                             </div>
                             <p className="text-xs text-muted-foreground">Summarize a long piece of text.</p>
                         </Button>
                          <Button variant="outline" className="h-auto p-4 flex flex-col items-start gap-2 text-left" onClick={() => handleFeatureSuggestionClick('translate', 'Enter text to translate...')}>
                              <div className="flex items-center gap-2">
                                 <Languages className="w-5 h-5 text-primary"/>
-                                <span className="font-semibold">అనువదించండి</span>
+                                <span className="font-semibold">Translate</span>
                             </div>
                             <p className="text-xs text-muted-foreground">Translate between Telugu and English.</p>
                         </Button>
