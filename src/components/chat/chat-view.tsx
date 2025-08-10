@@ -246,11 +246,12 @@ export function ChatView() {
   const handleSuggestionClick = (suggestion: string) => {
     setInput(suggestion);
     setSuggestions([]);
+    handleSubmit({ preventDefault: () => {} }, suggestion);
   };
 
   const handleFeatureSuggestionClick = (feature: string, prompt: string) => {
     setActiveFeature(feature);
-    handleSubmit({ preventDefault: () => {} }, prompt);
+    setInput(prompt);
   };
 
   const navItems = [
@@ -328,6 +329,20 @@ export function ChatView() {
                                 <span className="font-semibold">చిత్రాన్ని గీయండి</span>
                             </div>
                             <p className="text-xs text-muted-foreground">Bring your ideas to life with an image.</p>
+                        </Button>
+                         <Button variant="outline" className="h-auto p-4 flex flex-col items-start gap-2 text-left" onClick={() => handleFeatureSuggestionClick('summarize', 'Please provide the text you want to summarize.')}>
+                            <div className="flex items-center gap-2">
+                                <Book className="w-5 h-5 text-primary"/>
+                                <span className="font-semibold">సారాంశం చేయండి</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">Summarize a long piece of text.</p>
+                        </Button>
+                         <Button variant="outline" className="h-auto p-4 flex flex-col items-start gap-2 text-left" onClick={() => handleFeatureSuggestionClick('translate', 'Enter text to translate...')}>
+                             <div className="flex items-center gap-2">
+                                <Languages className="w-5 h-5 text-primary"/>
+                                <span className="font-semibold">అనువదించండి</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">Translate between Telugu and English.</p>
                         </Button>
                     </div>
                 </div>
