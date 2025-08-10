@@ -245,6 +245,10 @@ export function ChatView() {
     try {
       const aiResponse = await getAiResponse(currentInput, grade, activeFeature);
       
+      if (aiResponse.error || (!aiResponse.responseText && !aiResponse.imageUrl)) {
+        throw new Error(aiResponse.error || "The AI returned an empty response.");
+      }
+
       const newAiMessage: Message = {
         id: Date.now().toString() + "-ai",
         role: "ai",
@@ -543,7 +547,7 @@ export function ChatView() {
                 </Button>
               </div>
             </form>
-            <p className="text-xs text-center text-muted-foreground">Telugu Thodu can make mistakes. Please verify important information.</p>
+            <p className="text-xs text-center text-muted-foreground">తెలుగు తోడు can make mistakes. Please verify important information.</p>
           </footer>
         </main>
       </div>

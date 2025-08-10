@@ -95,7 +95,8 @@ export async function getAiResponse(
     };
   } catch (error) {
     console.error("AI action error:", error);
-    return { error: "An error occurred while processing your request." };
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+    return { error: `An error occurred while processing your request: ${errorMessage}` };
   }
 }
 
