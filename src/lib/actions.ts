@@ -5,6 +5,7 @@ import { inferStudentEmotion } from "@/ai/flows/infer-student-emotion";
 import { provideAutocompleteSuggestions } from "@/ai/flows/provide-autocomplete-suggestions";
 import { summarizeTextbookContent } from "@/ai/flows/summarize-textbook-content";
 import { casualChat } from "@/ai/flows/casual-chat-flow";
+import { answerQuestion } from "@/ai/flows/answer-question-flow";
 
 type AIResponse = {
   responseText?: string;
@@ -38,6 +39,12 @@ export async function getAiResponse(
         responseText = chatResponse.response;
         break;
       case "ask":
+        const askResponse = await answerQuestion({
+          question: prompt,
+          gradeLevel: grade,
+        });
+        responseText = askResponse.answer;
+        break;
       case "summarize":
         const summaryResponse = await summarizeTextbookContent({
           textbookContent: prompt,
