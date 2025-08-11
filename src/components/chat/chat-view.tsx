@@ -3,6 +3,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Mic, Send, BotIcon, Book, Image as ImageIcon, MessageCircle, History, Languages, User, Settings, Sun, Moon, Upload, Plus } from "lucide-react";
+import { Logo } from "@/components/icons";
 import { getAiResponse, getAutocompleteSuggestions } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,6 +37,7 @@ type ChatSession = {
 export function ChatView() {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatSession[]>([]);
+  const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
   const [input, setInput] = useState("");
   const [grade, setGrade] = useState("6");
   const [activeFeature, setActiveFeature] = useState("chat");
@@ -49,7 +51,6 @@ export function ChatView() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   const debouncedInput = useDebounce(input, 300);
 
   // Fix for hydration error
@@ -58,42 +59,116 @@ export function ChatView() {
     setMounted(true);
   }, []);
 
-
-  // Load chat history from localStorage
-  useEffect(() => {
+  // Simple storage functions that only handle chat history
+  const saveChatHistory = (history: ChatSession[]) => {
     try {
-      const savedHistory = localStorage.getItem("chatHistory");
-      if (savedHistory) {
-        const parsedHistory = JSON.parse(savedHistory) as ChatSession[];
-        setChatHistory(parsedHistory);
-        if (parsedHistory.length > 0) {
-            const latestChat = parsedHistory.sort((a,b) => b.createdAt - a.createdAt)[0];
-            if (latestChat) {
-                setCurrentChatId(latestChat.id);
-            } else {
-                createNewChat();
-            }
-        } else {
-          createNewChat();
-        }
+      // Only save completed chats (not the current session)
+      const completedChats = history.filter(chat => chat.messages.length > 0);
+      const compressed = JSON.stringify(completedChats);
+      
+      // Check if data is too large and clean up if needed
+      if (compressed.length > 4000000) { // 4MB limit
+        const reducedHistory = completedChats
+          .sort((a, b) => b.createdAt - a.createdAt)
+          .slice(0, 10); // Keep only 10 most recent
+        localStorage.setItem("chatHistory", JSON.stringify(reducedHistory));
+        toast({
+          title: "Storage Cleaned",
+          description: "Old chat history has been cleaned to save space.",
+        });
       } else {
-        createNewChat();
+        localStorage.setItem("chatHistory", compressed);
+      }
+      return true;
+    } catch (error) {
+      console.error('Failed to save chat history:', error);
+      // If storage fails, try to clean up and save again
+      try {
+        const reducedHistory = history
+          .sort((a, b) => b.createdAt - a.createdAt)
+          .slice(0, 5); // Keep only 5 most recent
+        localStorage.setItem("chatHistory", JSON.stringify(reducedHistory));
+        toast({
+          title: "Storage Cleaned",
+          description: "Storage was full. Old chats have been removed.",
+        });
+        return true;
+      } catch (e) {
+        console.error('Failed to save even after cleanup:', e);
+        return false;
+      }
+    }
+  };
+
+  const loadChatHistory = (): ChatSession[] => {
+    try {
+      const saved = localStorage.getItem("chatHistory");
+      if (saved) {
+        return JSON.parse(saved) as ChatSession[];
       }
     } catch (error) {
-        console.error("Failed to parse chat history:", error);
-        createNewChat();
+      console.error('Failed to load chat history:', error);
     }
+    return [];
+  };
+
+  // Load only chat history on component mount, don't load current session
+  useEffect(() => {
+    const history = loadChatHistory();
+    setChatHistory(history);
+    // Always start with a fresh session
+        createNewChat();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Save chat history to localStorage
+  // Save chat history when it changes (but not current session)
   useEffect(() => {
     if (chatHistory.length > 0) {
-      localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
+      saveChatHistory(chatHistory);
     }
   }, [chatHistory]);
 
-  const messages = chatHistory.find(chat => chat.id === currentChatId)?.messages ?? [];
+  const createNewChat = useCallback(() => {
+    const newChatId = Date.now().toString();
+    const newChat: ChatSession = {
+      id: newChatId,
+      title: 'New Chat',
+      messages: [],
+      createdAt: Date.now()
+    };
+    
+    setCurrentSession(newChat);
+    setCurrentChatId(newChatId);
+    return newChatId;
+  }, []);
+
+  // Get current messages (from current session, not from history)
+  const getCurrentMessages = useCallback(() => {
+    return currentSession?.messages || [];
+  }, [currentSession]);
+
+  // Add message to current session
+  const addMessageToCurrentSession = useCallback((message: Message) => {
+    setCurrentSession(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        messages: [...prev.messages, message]
+      };
+    });
+  }, []);
+
+  // Save current session to history when it's complete
+  const saveCurrentSessionToHistory = useCallback(() => {
+    if (currentSession && currentSession.messages.length > 0) {
+      setChatHistory(prev => {
+        const updatedHistory = [currentSession, ...prev].sort((a,b) => b.createdAt - a.createdAt);
+        return updatedHistory;
+      });
+    }
+  }, [currentSession]);
+
+  const messages = getCurrentMessages();
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -121,9 +196,11 @@ export function ChatView() {
   }, [debouncedInput, grade, activeFeature]);
 
   useEffect(() => {
-    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
+    // @ts-ignore - vendor-prefixed SpeechRecognition in some browsers
+    const AnyWindow: any = window as any;
+    if ('SpeechRecognition' in AnyWindow || 'webkitSpeechRecognition' in AnyWindow) {
+      const SpeechRecognitionCtor = (AnyWindow as any).SpeechRecognition || (AnyWindow as any).webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognitionCtor();
       recognitionRef.current.continuous = false;
       recognitionRef.current.interimResults = false;
       recognitionRef.current.lang = 'te-IN';
@@ -187,58 +264,69 @@ export function ChatView() {
       });
     }
   }, [toast]);
-
-  const createNewChat = useCallback(() => {
-    const newChatId = Date.now().toString();
-    const newChat: ChatSession = {
-      id: newChatId,
-      title: 'New Chat',
-      messages: [],
-      createdAt: Date.now()
-    };
-    
-    setChatHistory(prev => {
-        const sortedHistory = [newChat, ...prev].sort((a,b) => b.createdAt - a.createdAt);
-        return sortedHistory;
-    });
-
-    setCurrentChatId(newChatId);
-    setActiveFeature('chat'); // Default to chat view for new chats
-    return newChatId;
-  }, []);
   
   const updateMessages = (chatId: string, newMessages: Message[] | ((prevMessages: Message[]) => Message[])) => {
-    setChatHistory(prev =>
-      prev.map(chat => {
-        if (chat.id === chatId) {
-          const updatedMessages = typeof newMessages === 'function' ? newMessages(chat.messages) : newMessages;
-          
-          let newTitle = chat.title;
-          if ((chat.title === 'New Chat' || !chat.title) && updatedMessages.length > 0 && updatedMessages[0].role === 'user') {
+    // Update current session if it matches the chatId
+    if (currentSession && currentSession.id === chatId) {
+      setCurrentSession(prev => {
+        if (!prev) return prev;
+        const updatedMessages = typeof newMessages === 'function' ? newMessages(prev.messages) : newMessages;
+        
+        let newTitle = prev.title;
+        if ((prev.title === 'New Chat' || !prev.title) && updatedMessages.length > 0 && updatedMessages[0].role === 'user') {
             newTitle = updatedMessages[0].content?.substring(0, 30) || 'Chat';
           }
 
-          return { ...chat, messages: updatedMessages, title: newTitle };
+        return { ...prev, messages: updatedMessages, title: newTitle };
+      });
+    }
+    
+    // Upsert into history to avoid losing current session on refresh
+    setChatHistory(prev => {
+      const existing = prev.find(c => c.id === chatId);
+      if (existing) {
+        const updatedMessages = typeof newMessages === 'function' ? newMessages(existing.messages) : newMessages;
+        let newTitle = existing.title;
+        if ((existing.title === 'New Chat' || !existing.title) && updatedMessages.length > 0 && updatedMessages[0].role === 'user') {
+          newTitle = updatedMessages[0].content?.substring(0, 30) || 'Chat';
         }
-        return chat;
-      }).sort((a,b) => b.createdAt - a.createdAt)
-    );
+        return prev
+          .map(c => (c.id === chatId ? { ...c, messages: updatedMessages, title: newTitle } : c))
+          .sort((a,b) => b.createdAt - a.createdAt);
+      } else {
+        const baseTitle = (typeof newMessages === 'function' ? newMessages([]) : newMessages);
+        const titleFromFirst = baseTitle.length > 0 && baseTitle[0].role === 'user' ? (baseTitle[0].content?.substring(0,30) || 'Chat') : 'New Chat';
+        const updatedMessages = typeof newMessages === 'function' ? newMessages([]) : newMessages;
+        const newEntry: ChatSession = {
+          id: chatId,
+          title: titleFromFirst,
+          messages: updatedMessages,
+          createdAt: Date.now(),
+        };
+        return [newEntry, ...prev].sort((a,b) => b.createdAt - a.createdAt);
+      }
+    });
   };
   
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | { preventDefault: () => void; }, submissionInput?: string) => {
+  const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement> | { preventDefault: () => void; },
+    submissionInput?: string,
+    featureOverride?: string
+  ) => {
     e.preventDefault();
     const currentInput = submissionInput || input;
     if (!currentInput.trim() || isLoading) return;
 
     let chatId = currentChatId;
-    let currentMessages = chatHistory.find(c => c.id === chatId)?.messages ?? [];
+    let currentMessages = getCurrentMessages();
 
     if (!chatId || (currentMessages.length > 0 && activeFeature === 'history')) {
         chatId = createNewChat();
     }
 
-    const userMessage: Message = { id: Date.now().toString(), role: 'user', content: currentInput };
-    const loadingMessage: Message = { id: 'loading', role: 'loading' };
+    const userMessage: Message = { id: (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`), role: 'user', content: currentInput };
+    const loadingId = `loading-${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`}`;
+    const loadingMessage: Message = { id: loadingId, role: 'loading' };
     
     updateMessages(chatId, (prev) => [...prev, userMessage, loadingMessage]);
 
@@ -247,21 +335,21 @@ export function ChatView() {
     setIsLoading(true);
 
     try {
-      const aiResponse = await getAiResponse(currentInput, grade, activeFeature);
+      const aiResponse = await getAiResponse(currentInput, grade, featureOverride ?? activeFeature);
       
       if (aiResponse.error || (!aiResponse.responseText && !aiResponse.imageUrl)) {
         throw new Error(aiResponse.error || "The AI returned an empty response.");
       }
 
       const newAiMessage: Message = {
-        id: Date.now().toString() + "-ai",
+        id: (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`),
         role: "ai",
         content: aiResponse.responseText,
         imageUrl: aiResponse.imageUrl,
         emotion: aiResponse.emotion,
       };
 
-      updateMessages(chatId, (prev) => [...prev.filter(m => m.id !== 'loading'), newAiMessage]);
+      updateMessages(chatId, (prev) => [...prev.filter(m => m.id !== loadingId), newAiMessage]);
     } catch (error) {
       console.error(error);
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
@@ -270,9 +358,10 @@ export function ChatView() {
         title: "AI Error",
         description: errorMessage,
       });
-      updateMessages(chatId, (prev) => prev.filter(m => m.id !== 'loading'));
+      updateMessages(chatId, (prev) => prev.filter(m => m.id !== loadingId));
     } finally {
       setIsLoading(false);
+      saveCurrentSessionToHistory(); // Save session to history after completion
     }
   };
 
@@ -304,9 +393,17 @@ export function ChatView() {
       }
 
       const data = await response.json();
-      setInput(data.text);
-      toast({ title: "File processed successfully!", description: "The extracted text has been placed in the text area." });
+      // Start a new summarize conversation directly using the extracted text
       setActiveFeature('summarize');
+      let chatId = currentChatId;
+      const currentMessages = getCurrentMessages();
+      if (!chatId || currentMessages.length > 0) {
+        chatId = createNewChat();
+      }
+      const prompt = data.text as string;
+      toast({ title: "File processed successfully!", description: "Summarizing the uploaded document..." });
+      // Trigger summarization flow via the standard submit path, forcing feature
+      await handleSubmit({ preventDefault: () => {} }, prompt, 'summarize');
 
     } catch (error) {
       console.error("File upload error:", error);
@@ -335,13 +432,13 @@ export function ChatView() {
 
   const welcomeScreens: { [key: string]: { title: string; subtitle: string; prompts: { icon: any; title: string; subtitle: string; action: () => void; }[] } } = {
     chat: {
-      title: "నమస్కారం! నేను మీ విద్యార్థి మిత్ర",
+      title: "నమస్కారం! నేను మీ తెలుగు తోడు",
       subtitle: "మీ చదువులో సహాయం చేసే AI స్నేహితుడిని. ఈ రోజు నేను మీకు ఎలా సహాయపడగలను?",
       prompts: [
         { icon: BotIcon, title: "Ask a question", subtitle: "What is photosynthesis?", action: () => handleSuggestionClick("What is photosynthesis?") },
-        { icon: ImageIcon, title: "Draw a picture", subtitle: "A serene village in Telangana", action: () => { setActiveFeature("image"); handleSuggestionClick("A serene village in Telangana"); } },
-        { icon: Book, title: "Summarize text", subtitle: "Click to switch to Summarize feature", action: () => { setActiveFeature("summarize"); } },
-        { icon: Languages, title: "Translate something", subtitle: "Translate 'Hello' to Telugu", action: () => { setActiveFeature("translate"); handleSuggestionClick("Hello"); } },
+        { icon: ImageIcon, title: "Draw a picture", subtitle: "A serene village in Telangana", action: () => { setActiveFeature("image"); createNewChat(); handleSuggestionClick("A serene village in Telangana"); } },
+        { icon: Book, title: "Summarize text", subtitle: "Click to switch to Summarize feature", action: () => { setActiveFeature("summarize"); createNewChat(); } },
+        { icon: Languages, title: "Translate something", subtitle: "Translate 'Hello' to Telugu", action: () => { setActiveFeature("translate"); createNewChat(); handleSuggestionClick("Hello"); } },
       ]
     },
     summarize: {
@@ -437,7 +534,10 @@ export function ChatView() {
             <Button 
                 variant={'secondary'} 
                 className="justify-start gap-3 mb-4"
-                onClick={createNewChat}
+                onClick={() => {
+                    setActiveFeature('chat');
+                    createNewChat();
+                }}
             >
                 <Plus className="w-5 h-5"/>
                 New Chat
@@ -447,7 +547,11 @@ export function ChatView() {
                     key={item.id}
                     variant={activeFeature === item.id ? 'secondary' : 'ghost'} 
                     className="justify-start gap-3"
-                    onClick={() => setActiveFeature(item.id)}
+                    onClick={() => {
+                        setActiveFeature(item.id);
+                        // Create a new chat when category is selected
+                        createNewChat();
+                    }}
                 >
                     <item.icon className="w-5 h-5"/>
                     {item.label}
@@ -460,6 +564,25 @@ export function ChatView() {
                 <AvatarFallback className="bg-primary/20 text-xs">U</AvatarFallback>
               </Avatar>
               Profile
+             </Button>
+                           <Button 
+                variant="ghost" 
+                className="justify-start gap-3 text-xs"
+                onClick={() => {
+                  // Simple cleanup - keep only 5 most recent chats
+                  const reducedHistory = chatHistory
+                    .sort((a, b) => b.createdAt - a.createdAt)
+                    .slice(0, 5);
+                  setChatHistory(reducedHistory);
+                  toast({
+                    title: "Storage Cleaned",
+                    description: "Old chat history has been cleaned to save space.",
+                  });
+                }}
+                title="Clean up old chat history to save storage space"
+              >
+                <Settings className="w-4 h-4"/>
+                Clean Storage
             </Button>
             <div className="flex justify-around">
                 <Button variant="ghost" size="icon" onClick={() => {}}><Settings className="w-5 h-5"/></Button>
@@ -474,7 +597,10 @@ export function ChatView() {
 
       <div className="flex-1 flex flex-col">
         <header className="p-4 border-b flex justify-between items-center">
-          <h2 className="text-lg font-semibold capitalize">{chatHistory.find(c => c.id === currentChatId)?.title ?? 'Chat'}</h2>
+          <div className="flex items-center gap-3">
+            <Logo size={24} withText={false} />
+            <h2 className="text-lg font-semibold capitalize">{currentSession?.title ?? 'Chat'}</h2>
+          </div>
           <div className="flex items-center gap-4">
             {activeFeature === 'summarize' && (
               <>

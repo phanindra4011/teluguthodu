@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#3A206A"/>
+      <stop offset="100%" stop-color="#2A1652"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="24" fill="url(#bg)"/>
+  <!-- Book outline -->
+  <g fill="none" stroke="#F4DDF1" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M36 176 V92 c0-8 6-12 18-14 c36-6 60 4 74 16 v98 c-14-12-38-20-74-14 c-12 2-18-2-18-10z"/>
+    <path d="M220 176 V92 c0-8-6-12-18-14 c-36-6-60 4-74 16 v98 c14-12 38-20 74-14 c12 2 18-2 18-10z"/>
+    <path d="M66 84 c28-16 56-16 86 0"/>
+    <path d="M170 84 c-28-16-56-16-86 0"/>
+  </g>
+  <!-- Banner -->
+  <rect x="24" y="114" width="208" height="36" rx="8" fill="#F7E0EA"/>
+  <!-- Telugu text -->
+  <text x="128" y="138" text-anchor="middle" font-family="'Noto Sans Telugu', Arial, sans-serif" font-size="18" fill="#5A3FA6">"తెలుగు తోడు"</text>
+</svg>

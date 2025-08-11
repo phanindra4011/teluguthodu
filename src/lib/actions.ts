@@ -20,6 +20,26 @@ type AIOptions = {
   targetLang?: string;
 }
 
+async function withRetry<T>(fn: () => Promise<T>, retries = 3, delayMs = 1200): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      // If this looks like a transient fetch/503 error, backoff and retry
+      const msg = err instanceof Error ? err.message : String(err);
+      const isTransient = /503|fetch failed|ECONNRESET|ETIMEDOUT|network/i.test(msg);
+      if (i < retries - 1 && isTransient) {
+        await new Promise(res => setTimeout(res, delayMs * (i + 1)));
+        continue;
+      }
+      break;
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+
 export async function getAiResponse(
   prompt: string,
   grade: string,
@@ -35,33 +55,33 @@ export async function getAiResponse(
     let imageUrl: string | undefined;
 
     // We can infer emotion regardless of the feature
-    const emotionPromise = inferStudentEmotion({ studentInput: prompt });
+    const emotionPromise = withRetry(() => inferStudentEmotion({ studentInput: prompt }));
 
     switch (feature) {
       case "chat":
-        const chatResponse = await casualChat({
+        const chatResponse = await withRetry(() => casualChat({
             message: prompt,
             gradeLevel: grade,
-        });
+        }));
         responseText = chatResponse.response;
         break;
       case "ask":
-        const askResponse = await answerQuestion({
+        const askResponse = await withRetry(() => answerQuestion({
           question: prompt,
           gradeLevel: grade,
-        });
+        }));
         responseText = askResponse.answer;
         break;
       case "summarize":
-        const summaryResponse = await summarizeTextbookContent({
+        const summaryResponse = await withRetry(() => summarizeTextbookContent({
           textbookContent: prompt,
-        });
+        }));
         responseText = summaryResponse.summary;
         break;
       case "image":
-        const imageResponse = await generateImageFromTeluguText({
+        const imageResponse = await withRetry(() => generateImageFromTeluguText({
           teluguText: prompt,
-        });
+        }));
         imageUrl = imageResponse.imageDataUri;
         responseText = `Here is the image you requested for: "${prompt}"`;
         break;
@@ -69,20 +89,20 @@ export async function getAiResponse(
         const sourceLang = prompt.match(/[a-zA-Z]/) ? 'English' : 'Telugu';
         const targetLang = sourceLang === 'English' ? 'Telugu' : 'English';
 
-        const translateResponse = await translateText({
+        const translateResponse = await withRetry(() => translateText({
           text: prompt,
           sourceLanguage: sourceLang,
           targetLanguage: targetLang,
           gradeLevel: grade,
-        });
+        }));
         responseText = translateResponse.translatedText;
         break;
       default:
         // Default to chat if feature is unknown
-        const defaultResponse = await casualChat({
+        const defaultResponse = await withRetry(() => casualChat({
             message: prompt,
             gradeLevel: grade,
-        });
+        }));
         responseText = defaultResponse.response;
     }
 

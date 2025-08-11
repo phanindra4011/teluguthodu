@@ -1,3 +1,17 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+
+export function Logo({ size = 28, withText = true }: { size?: number; withText?: boolean }) {
+  return (
+    <Link href="/" className="inline-flex items-center gap-2 select-none">
+      <Image src="/logo.svg" alt="తెలుగు తోడు లোগో" width={size} height={size} priority />
+      {withText && <span className="font-semibold tracking-tight">తెలుగు తోడు</span>}
+    </Link>
+  );
+}
+
 import type { SVGProps } from "react";
 
 export function BotIcon(props: SVGProps<SVGSVGElement>) {

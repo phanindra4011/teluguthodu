@@ -1,16 +1,8 @@
-
 import { NextRequest, NextResponse } from 'next/server';
-import formidable from 'formidable';
-import fs from 'fs/promises';
-import mammoth from 'mammoth';
-import pdf from 'pdf-parse';
 
-// Disable the default body parser
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// Ensure this route runs in the Node.js runtime (not edge) so native libs work
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,10 +17,14 @@ export async function POST(req: NextRequest) {
     let text = '';
 
     if (file.type === 'application/pdf') {
-      const data = await pdf(fileBuffer);
+      // Import the core parser directly to avoid library test code running in bundled env
+      const pdfModule = await import('pdf-parse/lib/pdf-parse.js');
+      const pdfParse = (pdfModule as any).default ?? (pdfModule as any);
+      const data = await pdfParse(fileBuffer);
       text = data.text;
     } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-      const { value } = await mammoth.extractRawText({ buffer: fileBuffer });
+      const mammothModule = await import('mammoth');
+      const { value } = await (mammothModule as any).extractRawText({ buffer: fileBuffer });
       text = value;
     } else if (file.type === 'text/plain') {
       text = fileBuffer.toString('utf-8');
