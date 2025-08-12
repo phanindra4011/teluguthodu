@@ -45,11 +45,13 @@ export function ChatView() {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(false);
   
+  
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const debouncedInput = useDebounce(input, 300);
 
@@ -212,6 +214,7 @@ export function ChatView() {
     }
   }, [debouncedInput, grade, activeFeature]);
 
+  // Voice input (SpeechRecognition)
   useEffect(() => {
     // @ts-ignore - vendor-prefixed SpeechRecognition in some browsers
     const AnyWindow: any = window as any;
@@ -227,7 +230,7 @@ export function ChatView() {
         setInput(transcript);
         setIsListening(false);
       };
-      
+
       recognitionRef.current.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
         toast({
@@ -237,13 +240,13 @@ export function ChatView() {
         });
         setIsListening(false);
       };
-      
+
       recognitionRef.current.onend = () => {
         setIsListening(false);
       };
     }
   }, [toast]);
-  
+
   const handleVoiceInput = () => {
     if (isListening) {
       recognitionRef.current?.stop();
@@ -261,26 +264,6 @@ export function ChatView() {
       }
     }
   };
-
-  const speak = useCallback((text: string) => {
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'te-IN';
-      const voices = window.speechSynthesis.getVoices();
-      const teluguVoice = voices.find(voice => voice.lang === 'te-IN');
-      if (teluguVoice) {
-        utterance.voice = teluguVoice;
-      }
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utterance);
-    } else {
-      toast({
-          variant: 'destructive',
-          title: "Unsupported Browser",
-          description: "Text to speech is not supported by your browser.",
-      });
-    }
-  }, [toast]);
   
   const updateMessages = (chatId: string, newMessages: Message[] | ((prevMessages: Message[]) => Message[])) => {
     // Update current session if it matches the chatId
@@ -642,7 +625,7 @@ export function ChatView() {
                 renderWelcomeScreen()
               ) : (
                 messages.map((msg) => (
-                  <ChatMessage key={msg.id} message={msg} speak={speak} />
+                  <ChatMessage key={msg.id} message={msg} />
                 ))
               )}
             </div>

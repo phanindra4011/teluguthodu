@@ -1,22 +1,19 @@
 "use client";
 
 import { BotIcon } from "@/components/icons";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Message } from "@/components/chat/chat-view";
-import { Button } from "@/components/ui/button";
-import { Volume2, UserIcon } from "lucide-react";
+import { UserIcon } from "lucide-react";
 import Image from "next/image";
 import { Skeleton } from "../ui/skeleton";
 
 interface ChatMessageProps {
   message: Message;
-  speak: (text: string) => void;
 }
 
-export function ChatMessage({ message, speak }: ChatMessageProps) {
+export function ChatMessage({ message }: ChatMessageProps) {
   const { role, content, imageUrl, emotion } = message;
   const isUser = role === "user";
   const isLoading = role === "loading";
@@ -75,17 +72,7 @@ export function ChatMessage({ message, speak }: ChatMessageProps) {
             </>
           )}
         </div>
-        {!isUser && !isLoading && content && (
-           <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground transition-transform active:scale-95"
-            onClick={() => speak(content)}
-          >
-            <Volume2 className="h-5 w-5" />
-            <span className="sr-only">Speak</span>
-          </Button>
-        )}
+        
       </div>
       {isUser && (
         <Avatar className="h-8 w-8 shrink-0">
