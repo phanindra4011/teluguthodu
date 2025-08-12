@@ -13,6 +13,7 @@ type AIResponse = {
   imageUrl?: string;
   emotion?: string;
   error?: string;
+  summary?: string; // for summarization safeguard
 };
 
 type AIOptions = {

@@ -59,6 +59,8 @@ export function ChatView() {
     setMounted(true);
   }, []);
 
+
+
   // Simple storage functions that only handle chat history
   const saveChatHistory = (history: ChatSession[]) => {
     try {
@@ -170,14 +172,29 @@ export function ChatView() {
 
   const messages = getCurrentMessages();
 
-  useEffect(() => {
+  // Improved scroll to bottom function
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo({
-        top: scrollAreaRef.current.scrollHeight,
-        behavior: "smooth",
-      });
+      const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollElement) {
+        scrollElement.scrollTo({
+          top: scrollElement.scrollHeight,
+          behavior,
+        });
+      }
     }
-  }, [messages]);
+  }, []);
+
+  // Auto-scroll when messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      // Use a small delay to ensure the DOM has updated
+      const timer = setTimeout(() => {
+        scrollToBottom('smooth');
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [messages, scrollToBottom]);
 
   useEffect(() => {
     const fetchAutocomplete = async () => {
@@ -344,7 +361,10 @@ export function ChatView() {
       const newAiMessage: Message = {
         id: (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`),
         role: "ai",
-        content: aiResponse.responseText,
+        content:
+          (featureOverride ?? activeFeature) === 'summarize' && typeof aiResponse.responseText !== 'string'
+            ? (aiResponse.summary || aiResponse.responseText || '')
+            : aiResponse.responseText,
         imageUrl: aiResponse.imageUrl,
         emotion: aiResponse.emotion,
       };
@@ -615,8 +635,8 @@ export function ChatView() {
           </div>
         </header>
 
-        <main className="flex-1 flex flex-col min-h-0 bg-background">
-          <ScrollArea className="flex-1" ref={scrollAreaRef}>
+        <main className="flex-1 flex flex-col min-h-0 bg-background relative">
+          <ScrollArea className="flex-1 h-full" ref={scrollAreaRef}>
             <div className="space-y-6 p-4 md:p-6">
               {messages.length === 0 ? (
                 renderWelcomeScreen()
@@ -627,6 +647,21 @@ export function ChatView() {
               )}
             </div>
           </ScrollArea>
+          
+          {/* Scroll to bottom button */}
+          {messages.length > 2 && (
+            <Button
+              size="icon"
+              variant="outline"
+              className="absolute bottom-20 right-6 rounded-full shadow-lg bg-background/80 backdrop-blur-sm hover:bg-background"
+              onClick={() => scrollToBottom('smooth')}
+              title="Scroll to bottom"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+              </svg>
+            </Button>
+          )}
 
           <footer className="p-4 pt-2 bg-background space-y-2">
             <form onSubmit={handleSubmit} className="relative">

@@ -52,7 +52,30 @@ const translateTextFlow = ai.defineFlow(
     outputSchema: TranslateTextOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    const maxRetries = 3;
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const {output} = await prompt(input);
+        return output!;
+      } catch (error: any) {
+        lastError = error;
+        
+        // If it's a service overload error, wait and retry
+        if (error.message?.includes('503') || error.message?.includes('overloaded')) {
+          if (attempt < maxRetries) {
+            // Wait progressively longer between retries (1s, 2s, 4s)
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+            continue;
+          }
+        }
+        
+        // For other errors or max retries reached, throw the error
+        throw error;
+      }
+    }
+    
+    throw lastError;
   }
 );
