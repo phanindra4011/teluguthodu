@@ -19,11 +19,8 @@ const nextConfig: NextConfig = {
     ],
     unoptimized: true, // Better for static deployments
   },
-  // Remove env section as it's not needed in Next.js 13+
-  experimental: {
-    // Enable modern features
-    serverComponentsExternalPackages: ['genkit'],
-  },
+  // Use the correct property name for Next.js 15
+  serverExternalPackages: ['genkit'],
   // Add output configuration for static deployments
   output: 'standalone',
   // Add trailing slash for better compatibility

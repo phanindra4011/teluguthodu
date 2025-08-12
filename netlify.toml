@@ -13,3 +13,6 @@
 [functions]
   directory = "src/app/api"
   node_bundler = "esbuild"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

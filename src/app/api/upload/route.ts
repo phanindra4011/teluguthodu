@@ -17,15 +17,24 @@ export async function POST(req: NextRequest) {
     let text = '';
 
     if (file.type === 'application/pdf') {
-      // Import the core parser directly to avoid library test code running in bundled env
-      const pdfModule = await import('pdf-parse/lib/pdf-parse.js');
-      const pdfParse = (pdfModule as any).default ?? (pdfModule as any);
-      const data = await pdfParse(fileBuffer);
-      text = data.text;
+      // Use dynamic import with proper error handling
+      try {
+        const pdfParse = (await import('pdf-parse')).default;
+        const data = await pdfParse(fileBuffer);
+        text = data.text;
+      } catch (pdfError) {
+        console.error('PDF parsing error:', pdfError);
+        return NextResponse.json({ error: 'Failed to parse PDF file.' }, { status: 500 });
+      }
     } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-      const mammothModule = await import('mammoth');
-      const { value } = await (mammothModule as any).extractRawText({ buffer: fileBuffer });
-      text = value;
+      try {
+        const mammoth = await import('mammoth');
+        const { value } = await mammoth.extractRawText({ buffer: fileBuffer });
+        text = value;
+      } catch (mammothError) {
+        console.error('Word document parsing error:', mammothError);
+        return NextResponse.json({ error: 'Failed to parse Word document.' }, { status: 500 });
+      }
     } else if (file.type === 'text/plain') {
       text = fileBuffer.toString('utf-8');
     } else {
