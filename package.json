@@ -1,5 +1,5 @@
 {
-  "name": "nextn",
+  "name": "teluguthodu",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,7 +9,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "export": "next build && next export",
+    "deploy:vercel": "vercel --prod",
+    "deploy:netlify": "netlify deploy --prod",
+    "clean": "rm -rf .next out",
+    "postinstall": "next telemetry disable"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.14.1",

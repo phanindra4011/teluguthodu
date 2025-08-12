@@ -3,10 +3,10 @@ import type {NextConfig} from 'next';
 const nextConfig: NextConfig = {
   /* config options here */
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false, // Enable type checking for better deployment
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false, // Enable linting for better deployment
   },
   images: {
     remotePatterns: [
@@ -17,10 +17,19 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
+    unoptimized: true, // Better for static deployments
   },
-  env: {
-    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  // Remove env section as it's not needed in Next.js 13+
+  experimental: {
+    // Enable modern features
+    serverComponentsExternalPackages: ['genkit'],
   },
+  // Add output configuration for static deployments
+  output: 'standalone',
+  // Add trailing slash for better compatibility
+  trailingSlash: false,
+  // Add powered by header
+  poweredByHeader: false,
 };
 
 export default nextConfig;
