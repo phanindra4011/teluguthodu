@@ -1,0 +1,7 @@
+datasets 
+smolagents 
+langchain-community 
+rank_bm25
+duckduckgo-search
+gradio
+huggingface_hub
